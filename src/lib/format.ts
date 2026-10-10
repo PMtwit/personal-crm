@@ -1,0 +1,47 @@
+const pluralRules = new Intl.PluralRules("ru-RU");
+
+type PluralForms = { one: string; few: string; many: string };
+
+export function pluralize(count: number, forms: PluralForms): string {
+  const rule = pluralRules.select(count);
+  const word = rule === "one" ? forms.one : rule === "few" ? forms.few : forms.many;
+  return `${count.toLocaleString("ru-RU")} ${word}`;
+}
+
+export function contactsCount(count: number): string {
+  return pluralize(count, { one: "контакт", few: "контакта", many: "контактов" });
+}
+
+export function notesCount(count: number): string {
+  return pluralize(count, { one: "заметка", few: "заметки", many: "заметок" });
+}
+
+const dateTimeFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function formatDateTime(date: Date): string {
+  return dateTimeFormat.format(date);
+}
+
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join("");
+}
+
+// Letter used to group the contact list; "Ё" goes together with "Е"
+export function groupLetter(name: string): string {
+  const letter = name.trim().charAt(0).toUpperCase();
+  if (letter === "Ё") {
+    return "Е";
+  }
+  return /\p{L}/u.test(letter) ? letter : "#";
+}
