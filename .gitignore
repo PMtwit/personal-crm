@@ -1,0 +1,10 @@
+# Secrets: only .env.example (no values) goes to git
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
