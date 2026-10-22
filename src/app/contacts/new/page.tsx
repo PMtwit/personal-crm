@@ -11,7 +11,9 @@ export default function NewContactPage() {
   return (
     <div className="flex flex-col gap-6">
       <BackLink href="/">Все контакты</BackLink>
-      <h1 className="text-2xl font-semibold tracking-tight">Новый контакт</h1>
+      <h1 className="text-title font-medium text-balance sm:text-title-lg">
+        Новый контакт
+      </h1>
       <NewContactForm />
     </div>
   );

@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Onest, Unbounded } from "next/font/google";
 import Link from "next/link";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-sans",
+// The landing's fonts; next/font serves them from the app itself, not from Google
+const onest = Onest({
+  variable: "--font-onest",
   subsets: ["latin", "cyrillic"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
   subsets: ["latin", "cyrillic"],
+  weight: "700",
 });
 
 export const metadata: Metadata = {
@@ -26,17 +28,28 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${onest.variable} ${unbounded.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <header className="border-b">
-          <div className="mx-auto flex h-12 w-full max-w-3xl items-center px-4">
-            <Link href="/" className="text-sm font-semibold">
-              Личная CRM
+        <header>
+          <div className="mx-auto flex h-16 w-full max-w-3xl items-center px-4 sm:h-20">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 rounded-logo focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-3"
+            >
+              <span
+                aria-hidden
+                className="flex size-8 items-center justify-center rounded-logo bg-primary font-display text-logo-mark font-bold text-primary-foreground sm:size-9 sm:rounded-logo-lg sm:text-logo-mark-lg"
+              >
+                Л
+              </span>
+              <span className="text-logo font-medium sm:text-logo-lg">
+                Личная CRM
+              </span>
             </Link>
           </div>
         </header>
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:py-8">
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-2 pb-10 sm:pb-16">
           {children}
         </main>
       </body>

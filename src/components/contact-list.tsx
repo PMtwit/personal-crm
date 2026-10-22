@@ -21,9 +21,11 @@ export async function ContactList({
 
   if (total === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-16 text-center">
-        <p className="text-muted-foreground">Пока нет ни одного контакта</p>
-        <Link href="/contacts/new" className={buttonVariants()}>
+      <div className="flex flex-col items-center gap-5 rounded-block bg-linear-160/srgb from-hero-from to-hero-to px-5 py-14 text-center sm:rounded-block-lg sm:py-16">
+        <p className="text-lg text-muted-foreground">
+          Пока нет ни одного контакта
+        </p>
+        <Link href="/contacts/new" className={buttonVariants({ size: "lg" })}>
           <Plus aria-hidden />
           Добавить первый контакт
         </Link>
@@ -39,16 +41,16 @@ export async function ContactList({
           : `Всего ${contactsCount(total)}`}
       </p>
       {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-6 py-12 text-center text-muted-foreground">
+        <p className="rounded-card bg-muted px-6 py-12 text-center text-muted-foreground sm:rounded-card-lg">
           Никого не нашлось по запросу «{query}»
         </p>
       ) : (
         groupByLetter(items).map(([letter, group]) => (
           <div key={letter}>
-            <h2 className="mb-1 px-3 text-xs font-semibold tracking-wide text-muted-foreground">
+            <h2 className="mb-1 px-3 font-display text-sm font-bold text-primary">
               {letter}
             </h2>
-            <ul className="flex flex-col">
+            <ul className="flex flex-col gap-0.5">
               {group.map((contact) => (
                 <li key={contact.id}>
                   <ContactRow contact={contact} />
@@ -66,10 +68,14 @@ function ContactRow({ contact }: { contact: ContactListItem }) {
   return (
     <Link
       href={`/contacts/${contact.id}`}
-      className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+      className="group flex items-center gap-3 rounded-card px-3 py-2 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
     >
-      <ContactAvatar name={contact.name} />
-      <span className="flex min-w-0 flex-1 flex-col">
+      {/* The row turns gray on hover, so the gray avatar turns white */}
+      <ContactAvatar
+        name={contact.name}
+        className="group-hover:bg-background group-focus-visible:bg-background"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate font-medium">{contact.name}</span>
         {contact.about ? (
           <span className="truncate text-sm text-muted-foreground">
@@ -109,7 +115,7 @@ export function ContactListSkeleton() {
       <div className="flex flex-col gap-1">
         {Array.from({ length: 8 }, (_, index) => (
           <div key={index} className="flex items-center gap-3 px-3 py-2">
-            <Skeleton className="size-10 rounded-full" />
+            <Skeleton className="size-12 rounded-avatar" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-4 w-48" />
               <Skeleton className="h-3 w-32" />

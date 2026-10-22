@@ -16,19 +16,19 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center gap-4 py-16 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="-mx-1 flex flex-col items-center gap-4 rounded-block bg-linear-160/srgb from-hero-from to-hero-to px-5 py-14 text-center sm:mx-0 sm:rounded-block-lg sm:py-16">
+      <h1 className="text-title font-medium text-balance sm:text-title-lg">
         Не получилось загрузить данные
       </h1>
-      <p className="max-w-md text-muted-foreground">
+      <p className="max-w-lg text-pretty text-muted-foreground sm:text-lg">
         Скорее всего, не запущена база данных. Откройте Docker Desktop и
         выполните в папке проекта команду{" "}
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
+        <code className="rounded-sm bg-background px-1.5 py-0.5 font-mono text-sm">
           docker compose up -d --wait
         </code>
         , затем попробуйте ещё раз.
       </p>
-      <Button variant="outline" onClick={() => retry()}>
+      <Button size="lg" className="mt-2" onClick={() => retry()}>
         Попробовать ещё раз
       </Button>
     </div>

@@ -40,7 +40,7 @@ async function EditContact({
   return (
     <div className="flex flex-col gap-6">
       <BackLink href={`/contacts/${contact.id}`}>{contact.name}</BackLink>
-      <h1 className="text-2xl font-semibold tracking-tight">
+      <h1 className="text-title font-medium text-balance sm:text-title-lg">
         Изменить контакт
       </h1>
       <ContactForm
@@ -63,7 +63,7 @@ function EditContactSkeleton() {
       {Array.from({ length: 4 }, (_, index) => (
         <div key={index} className="flex flex-col gap-2">
           <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-12 w-full rounded-note" />
         </div>
       ))}
     </div>
