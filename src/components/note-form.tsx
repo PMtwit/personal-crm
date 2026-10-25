@@ -43,7 +43,7 @@ export function NoteForm({ contactId }: { contactId: number }) {
         <Button type="submit" disabled={pending}>
           {pending ? "Сохраняю…" : "Добавить заметку"}
         </Button>
-        <span className="hidden text-xs text-muted-foreground sm:inline">
+        <span className="hidden text-sm text-subtle sm:inline">
           или ⌘/Ctrl + Enter
         </span>
       </div>

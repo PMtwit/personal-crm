@@ -54,7 +54,7 @@ export function SearchBox() {
     >
       <Search
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-subtle"
       />
       <Input
         type="search"
@@ -71,12 +71,12 @@ export function SearchBox() {
         placeholder="Найти по имени"
         aria-label="Найти контакт по имени"
         autoComplete="off"
-        className="h-10 pr-9 pl-9 text-base md:text-base"
+        className="rounded-button pr-11 pl-12"
       />
       {isPending ? (
         <LoaderCircle
           aria-label="Ищу…"
-          className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          className="absolute top-1/2 right-4 size-5 -translate-y-1/2 animate-spin text-subtle"
         />
       ) : null}
     </Form>
@@ -88,14 +88,14 @@ export function SearchBoxFallback() {
     <div className="relative">
       <Search
         aria-hidden
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-subtle"
       />
       <Input
         type="search"
         disabled
         placeholder="Найти по имени"
         aria-label="Найти контакт по имени"
-        className="h-10 pl-9 text-base md:text-base"
+        className="rounded-button pl-12"
       />
     </div>
   );

@@ -10,11 +10,17 @@ export default function ContactsPage({ searchParams }: PageProps<"/">) {
   return (
     <div className="flex flex-col gap-4">
       <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-4 bg-background/95 px-4 pt-2 pb-3 backdrop-blur">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Контакты</h1>
-          <Link href="/contacts/new" className={buttonVariants({ size: "lg" })}>
-            <Plus aria-hidden />
-            Добавить контакт
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-title font-medium text-balance sm:text-title-lg">
+            Контакты
+          </h1>
+          {/* On phones the wide button text doesn't fit next to the title: only "+" is shown */}
+          <Link
+            href="/contacts/new"
+            className={buttonVariants({ className: "max-sm:size-11 max-sm:px-0" })}
+          >
+            <Plus aria-hidden className="size-4 max-sm:size-5" />
+            <span className="max-sm:sr-only">Добавить контакт</span>
           </Link>
         </div>
         <Suspense fallback={<SearchBoxFallback />}>
