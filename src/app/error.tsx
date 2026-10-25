@@ -21,12 +21,8 @@ export default function ErrorPage({
         Не получилось загрузить данные
       </h1>
       <p className="max-w-lg text-pretty text-muted-foreground sm:text-lg">
-        Скорее всего, не запущена база данных. Откройте Docker Desktop и
-        выполните в папке проекта команду{" "}
-        <code className="rounded-sm bg-background px-1.5 py-0.5 font-mono text-sm">
-          docker compose up -d --wait
-        </code>
-        , затем попробуйте ещё раз.
+        Скорее всего, это временный сбой. Подождите минуту и попробуйте
+        ещё раз.
       </p>
       <Button size="lg" className="mt-2" onClick={() => retry()}>
         Попробовать ещё раз
