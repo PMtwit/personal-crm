@@ -5,7 +5,12 @@ import type { NextConfig } from "next";
 // Next.js leaves such a config untouched instead of rewriting tsconfig.json
 const isE2eServer = process.env.E2E_SERVER === "1";
 
+// The Docker image runs the minimal standalone server. Only there:
+// with this option "next start" warns that it does not work
+const isDockerBuild = process.env.DOCKER_BUILD === "1";
+
 const nextConfig: NextConfig = {
+  ...(isDockerBuild && { output: "standalone" }),
   ...(isE2eServer && {
     distDir: ".next-e2e",
     typescript: { tsconfigPath: "tsconfig.e2e.json" },

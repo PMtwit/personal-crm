@@ -1,17 +1,19 @@
 // Fills an empty database with test contacts: pnpm db:seed
 // Never deletes or changes existing data: if any contact exists, it stops.
-import { loadEnvConfig } from "@next/env";
+// An ES module (.mts) both for tsx and for plain Node, which runs it in the app
+// image: there local imports need the .ts extension.
+import nextEnv from "@next/env";
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
-import { contacts, notes } from "../src/db/schema";
-import { generateContacts, toContactRow } from "./seed-data";
+import { contacts, notes } from "../src/db/schema.ts";
+import { generateContacts, toContactRow } from "./seed-data.ts";
 
 const CONTACT_COUNT = 1000;
 
 async function main() {
-  loadEnvConfig(process.cwd());
+  nextEnv.loadEnvConfig(process.cwd());
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
   }

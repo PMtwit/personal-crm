@@ -1,0 +1,59 @@
+# Production on the server: project "prod", files in /srv/personal-crm.
+# Run through deploy.sh: it sets APP_TAG, the image tag (commit SHA) to run.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+x-app: &app
+  image: ghcr.io/pmtwit/personal-crm:${APP_TAG:?run deploy.sh with the image tag}
+  environment:
+    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  depends_on:
+    db:
+      condition: service_healthy
+  logging: *logging
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    # No published ports: only the app and the migrations reach it, inside this project
+    # Since postgres:18 the data directory lives under /var/lib/postgresql
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  # One-off container from the app image: applies migrations and exits
+  migrate:
+    <<: *app
+    command: ["node", "scripts/migrate.mts"]
+    profiles: ["oneoff"]
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    # Localhost only: the outside world reaches the app through nginx
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+
+volumes:
+  pgdata:

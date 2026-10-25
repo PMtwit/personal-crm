@@ -1,0 +1,76 @@
+name: Deploy
+
+# Every push to main: build the image, push it to GHCR, deploy it to the server
+on:
+  push:
+    branches: [main]
+
+# One deploy at a time: a newer push waits for the running one to finish
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/pmtwit/personal-crm
+  SERVER: deploy@217.180.0.147
+  APP_DIR: /srv/personal-crm
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          # Always take the latest node:24-slim, with its security fixes
+          pull: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # The server's host key: SSH refuses to talk to any other machine
+          echo "217.180.0.147 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvufsWQh68fUmn7JyKKdConhhK4KLAK0Mzh9fXajgi2" > ~/.ssh/known_hosts
+
+      - name: Copy deploy scripts
+        run: scp -p deploy/compose.yaml deploy/deploy.sh "$SERVER:$APP_DIR/"
+
+      # Migrations, the new app, smoke check of /health. The registry token
+      # goes on stdin and only lives until this job ends
+      - name: Deploy
+        env:
+          TAG: ${{ github.sha }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$REGISTRY_TOKEN" | ssh "$SERVER" "$APP_DIR/deploy.sh $TAG $REGISTRY_USER"
+
+      - name: Smoke check through nginx
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://app.pmcrm.site/health
