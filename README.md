@@ -170,6 +170,7 @@ sudo -u deploy bash -c 'umask 077 && nano /srv/personal-crm/.env'
 - https://app.pmcrm.site/health отвечает `{"status":"ok"}`
 - Какая версия запущена и в каком состоянии: `ssh crm docker ps`, в колонке IMAGE видно SHA коммита
 - Логи приложения: `ssh crm docker logs --tail 100 prod-app-1`
+- Если на сайте страница «Не получилось загрузить данные», откройте https://app.pmcrm.site/health. Ответ `database unreachable` значит, что приложение не достаёт до базы: проверьте `ssh crm docker ps`, у `prod-db-1` должен быть статус `(healthy)`
 
 ### Откатить на предыдущую версию
 
