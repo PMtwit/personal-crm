@@ -17,11 +17,26 @@ const unbounded = Unbounded({
 });
 
 export const metadata: Metadata = {
+  // Absolute URLs in link preview tags (og:image) are built from this
+  metadataBase: new URL("https://app.pmcrm.site"),
   title: {
     default: "Личная CRM",
     template: "%s — Личная CRM",
   },
   description: "Контакты людей, которых я знаю лично",
+  // Link preview: same texts as the landing's; the image is opengraph-image.png next to this file.
+  // Pages below set only their title, so every page shares this preview
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: "Личная CRM",
+    title: "Не теряйте людей, которых знаете лично",
+    description:
+      "Помогу вспомнить всё: кто это, откуда вы знакомы, как связаться и о чём договорились — всё в одной карточке.",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
