@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { BackLink } from "@/components/back-link";
 import { ContactAvatar } from "@/components/contact-avatar";
+import { DeleteContactButton } from "@/components/delete-contact-button";
 import { NoteForm } from "@/components/note-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,15 +50,19 @@ async function ContactCard({
         <div className="flex items-start justify-between gap-4">
           <ContactAvatar
             name={contact.name}
-            className="size-16 rounded-avatar-lg bg-background text-avatar-lg"
+            className="size-24 rounded-avatar-lg bg-background text-avatar-lg"
           />
-          <Link
-            href={`/contacts/${contact.id}/edit`}
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <Pencil aria-hidden />
-            Изменить
-          </Link>
+          {/* Two buttons of one width; together (44 + 8 + 44 px) as tall as the avatar */}
+          <div className="grid gap-2">
+            <Link
+              href={`/contacts/${contact.id}/edit`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Pencil aria-hidden />
+              Изменить
+            </Link>
+            <DeleteContactButton contactId={contact.id} name={contact.name} />
+          </div>
         </div>
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="text-title font-medium break-words text-balance sm:text-title-lg">
@@ -161,7 +166,7 @@ function ContactCardSkeleton() {
   return (
     <div className="flex flex-col gap-8" aria-busy aria-label="Загружаю контакт">
       <div className="-mx-1 flex flex-col gap-5 rounded-block bg-muted p-5 sm:mx-0 sm:rounded-block-lg sm:p-8">
-        <Skeleton className="size-16 rounded-avatar-lg bg-background" />
+        <Skeleton className="size-24 rounded-avatar-lg bg-background" />
         <Skeleton className="h-8 w-56 bg-background" />
         <Skeleton className="h-36 w-full rounded-card bg-background sm:rounded-card-lg" />
       </div>

@@ -1,10 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, RedirectType } from "next/navigation";
 import { z } from "zod";
 
-import { insertContact, insertNote, updateContact } from "@/lib/data";
+import {
+  deleteContact,
+  insertContact,
+  insertNote,
+  updateContact,
+} from "@/lib/data";
 import {
   contactFields,
   contactSchema,
@@ -80,6 +85,19 @@ export async function updateContactAction(
   }
   refreshAllPages();
   redirect(`/contacts/${id}`);
+}
+
+export async function deleteContactAction(contactId: number): Promise<void> {
+  const id = contactIdSchema.parse(contactId);
+  const name = await deleteContact(id);
+  refreshAllPages();
+  // The list shows "Contact deleted" by the ?deleted= parameter. If the contact
+  // was already gone (deleted in another tab), just open the list.
+  // Replace, not push: the Back button must not lead to the deleted contact's card
+  redirect(
+    name === null ? "/" : `/?deleted=${encodeURIComponent(name)}`,
+    RedirectType.replace,
+  );
 }
 
 export async function addNoteAction(

@@ -71,7 +71,8 @@
   --text-logo-mark-lg: 15px;
 
   --text-avatar: 16px;
-  --text-avatar-lg: 20px;
+  /* The contact card's big avatar, 96px: as tall as its two buttons */
+  --text-avatar-lg: 30px;
 
   /* Corner radii */
   --radius-block: 32px;
@@ -81,7 +82,7 @@
   --radius-note: 14px;
   --radius-note-lg: 18px;
   --radius-avatar: 14px;
-  --radius-avatar-lg: 18px;
+  --radius-avatar-lg: 24px;
   --radius-button: 16px;
   --radius-logo: 10px;
   --radius-logo-lg: 11px;
