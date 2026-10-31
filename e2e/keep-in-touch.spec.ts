@@ -96,8 +96,11 @@ async function chooseInterval(page: Page, label: string) {
   await expect(intervalRadio(page, label)).toBeChecked();
 }
 
+// Groups are named with PREFIX too: main-scenario.spec.ts runs later and
+// expects no groups
 test.afterEach(async () => {
   await query("delete from contacts where name like $1", [`${PREFIX}%`]);
+  await query("delete from groups where name like $1", [`${PREFIX}%`]);
 });
 
 test("новый контакт → в переключателе «Не задано», срока нет", async ({
@@ -787,4 +790,96 @@ test("контакт удалён в другой вкладке → в окне
   await expect(noteDialog(page).getByText("Контакт не найден")).toBeVisible();
   await expect(noteDialog(page)).toBeVisible();
   expect(await countNotes(id)).toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// The block with a group chosen in the filter
+// ---------------------------------------------------------------------------
+
+async function createGroup(label: string): Promise<number> {
+  const [row] = await query<{ id: number }>(
+    "insert into groups (name) values ($1) returning id",
+    [fullName(label)],
+  );
+  return row.id;
+}
+
+async function addToGroup(contactId: number, groupId: number) {
+  await query(
+    "insert into contact_groups (contact_id, group_id) values ($1, $2)",
+    [contactId, groupId],
+  );
+}
+
+// Anna and Vera are in "Семья", Boris is in "Дача"; the time has come for all three
+async function createFamilyAndDacha(): Promise<{ family: number }> {
+  const anna = await createOverdue("Анна", 30);
+  const vera = await createOverdue("Вера", 20);
+  const boris = await createOverdue("Борис", 40);
+  const family = await createGroup("Семья");
+  const dacha = await createGroup("Дача");
+  await addToGroup(anna, family);
+  await addToGroup(vera, family);
+  await addToGroup(boris, dacha);
+  return { family };
+}
+
+// A pill in the row of groups under the search
+function groupPill(page: Page, label: string) {
+  return page
+    .getByRole("navigation", { name: "Группы" })
+    .getByRole("link", { name: fullName(label), exact: true });
+}
+
+// "Семья" is chosen: it is in the address and its pill is dark
+async function expectFamilyChosen(page: Page, family: number) {
+  await expect(page).toHaveURL(new RegExp(`[?&]group=${family}(&|$)`));
+  await expect(groupPill(page, "Семья")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+}
+
+test("выбрал «Семью» → в блоке только она; поиск прячет блок, очистка возвращает блок с «Семьёй»", async ({
+  page,
+}) => {
+  const { family } = await createFamilyAndDacha();
+  await page.goto("/");
+
+  await groupPill(page, "Семья").click();
+  await expectFamilyChosen(page, family);
+  await expect(dueNames(page)).toHaveText([fullName("Анна"), fullName("Вера")]);
+  await expect(dueCount(page)).toHaveText("2");
+
+  const search = page.getByRole("searchbox", {
+    name: "Найти контакт по имени",
+  });
+  await search.fill("Автотест");
+  await expect(page).toHaveURL(/[?&]q=/);
+  await expect(page.getByText(/^Найдено: /)).toBeVisible();
+  await expect(page.getByRole("heading", { name: BLOCK_NAME })).toHaveCount(0);
+
+  await search.fill("");
+  await expect(page).not.toHaveURL(/[?&]q=/);
+  await expectFamilyChosen(page, family);
+  await expect(dueNames(page)).toHaveText([fullName("Анна"), fullName("Вера")]);
+  await expect(dueCount(page)).toHaveText("2");
+});
+
+test("при выбранной «Семье» нажал «Уже» у Анны и «Сохранить» → Анны нет в блоке, «Семья» по-прежнему выбрана", async ({
+  page,
+}) => {
+  const { family } = await createFamilyAndDacha();
+  await page.goto("/");
+  await groupPill(page, "Семья").click();
+  await expect(dueNames(page)).toHaveText([fullName("Анна"), fullName("Вера")]);
+
+  await markButton(page, "Анна").click();
+  await noteDialog(page).getByRole("button", { name: "Сохранить" }).click();
+
+  await expect(noteDialog(page)).toBeHidden();
+  // Only Vera: Anna has a fresh note, Boris is not in the family
+  await expect(dueNames(page)).toHaveText([fullName("Вера")]);
+  await expect(dueCount(page)).toHaveText("1");
+  await expectFamilyChosen(page, family);
 });
