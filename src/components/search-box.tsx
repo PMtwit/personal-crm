@@ -3,7 +3,7 @@
 import { LoaderCircle, Search } from "lucide-react";
 import Form from "next/form";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useState, useTransition } from "react";
 
 import { Input } from "@/components/ui/input";
 import { homeHref } from "@/lib/groups";
@@ -17,17 +17,15 @@ export function SearchBox() {
   const urlQuery = searchParams.get("q") ?? "";
   // The chosen group stays in the address while searching
   const urlGroup = parseId(searchParams.get("group") ?? "");
-  // The timer below was set earlier, when the group could have been another one:
-  // it reads the latest group from here
-  const groupRef = useRef(urlGroup);
-  useEffect(() => {
-    groupRef.current = urlGroup;
-  }, [urlGroup]);
   const [value, setValue] = useState(urlQuery);
   // Query typed by the user that the URL has not caught up with yet
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+  // The search to run a moment after the user stops typing. A new object on
+  // every change, so each keystroke restarts the wait; null when nothing waits
+  const [scheduledSearch, setScheduledSearch] = useState<{
+    query: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // When the URL changes by itself (e.g. a link to the full list),
   // show its query in the box, unless the user is still typing
@@ -42,15 +40,35 @@ export function SearchBox() {
     }
   }
 
-  useEffect(() => () => clearTimeout(timer.current), []);
-
   function search(query: string) {
     startTransition(() => {
-      router.replace(homeHref({ q: query, group: groupRef.current }), {
+      router.replace(homeHref({ q: query, group: urlGroup }), {
         scroll: false,
       });
     });
   }
+
+  // Called by the timer: sees the latest group, even if it changed while waiting.
+  // The search is done, so a later re-run of the effect does not repeat it
+  const runScheduledSearch = useEffectEvent((query: string) => {
+    setScheduledSearch(null);
+    search(query);
+  });
+
+  // The wait lives in an effect, not in the input handler: when React takes the
+  // box off the page and puts it back (Strict Mode does so on the first mount
+  // in development), the cleanup stops the timer and the effect sets it again,
+  // so a typed query is never lost
+  useEffect(() => {
+    if (scheduledSearch === null) {
+      return;
+    }
+    const timer = setTimeout(
+      () => runScheduledSearch(scheduledSearch.query),
+      DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [scheduledSearch]);
 
   return (
     <Form
@@ -59,7 +77,7 @@ export function SearchBox() {
       className="relative"
       onSubmit={(event) => {
         event.preventDefault();
-        clearTimeout(timer.current);
+        setScheduledSearch(null);
         search(value.trim());
       }}
     >
@@ -80,8 +98,7 @@ export function SearchBox() {
           const query = nextValue.trim();
           setValue(nextValue);
           setPendingQuery(query === urlQuery ? null : query);
-          clearTimeout(timer.current);
-          timer.current = setTimeout(() => search(query), DEBOUNCE_MS);
+          setScheduledSearch({ query });
         }}
         placeholder="Найти по имени"
         aria-label="Найти контакт по имени"
