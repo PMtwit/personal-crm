@@ -57,7 +57,11 @@ async function EditContact({
 
 function EditContactSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy aria-label="Загружаю контакт">
+    <div
+      className="flex flex-col gap-6"
+      aria-busy
+      aria-label="Загружаю контакт"
+    >
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-8 w-56" />
       {Array.from({ length: 4 }, (_, index) => (

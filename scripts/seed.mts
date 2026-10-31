@@ -15,7 +15,9 @@ const CONTACT_COUNT = 1000;
 async function main() {
   nextEnv.loadEnvConfig(process.cwd());
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
+    throw new Error(
+      "DATABASE_URL is not set. Copy .env.example to .env and fill it in.",
+    );
   }
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -58,7 +60,9 @@ async function main() {
         .insert(groups)
         .values(SEED_GROUPS.map((name) => ({ name })))
         .returning({ id: groups.id, name: groups.name });
-      const idByGroupName = new Map(insertedGroups.map((row) => [row.name, row.id]));
+      const idByGroupName = new Map(
+        insertedGroups.map((row) => [row.name, row.id]),
+      );
       const membershipRows = seed.flatMap((contact) =>
         contact.groups.map((group) => ({
           contactId: idByName.get(contact.name)!,

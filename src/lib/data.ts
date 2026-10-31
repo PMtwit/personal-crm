@@ -41,23 +41,27 @@ export async function listContacts(
     conditions.push(inGroup(groupId));
   }
 
-  return db
-    .select({
-      id: contacts.id,
-      name: contacts.name,
-      about: contacts.about,
-      phone: contacts.phone,
-      email: contacts.email,
-    })
-    .from(contacts)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    // Russian alphabetical order: "Александр Ермаков" before "Александра Белых",
-    // "Ё" next to "Е" (the default collation ignores spaces)
-    .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
+  return (
+    db
+      .select({
+        id: contacts.id,
+        name: contacts.name,
+        about: contacts.about,
+        phone: contacts.phone,
+        email: contacts.email,
+      })
+      .from(contacts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      // Russian alphabetical order: "Александр Ермаков" before "Александра Белых",
+      // "Ё" next to "Е" (the default collation ignores spaces)
+      .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id))
+  );
 }
 
 // With a group, only the contacts in it; null means all contacts
-export async function countContacts(groupId: number | null = null): Promise<number> {
+export async function countContacts(
+  groupId: number | null = null,
+): Promise<number> {
   const [row] = await db
     .select({ total: count() })
     .from(contacts)
@@ -66,10 +70,7 @@ export async function countContacts(groupId: number | null = null): Promise<numb
 }
 
 export async function getContact(id: number) {
-  const [contact] = await db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, id));
+  const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
   return contact ?? null;
 }
 
@@ -214,7 +215,9 @@ export async function listDueContacts(
   // The last note of each contact: one row per contact, even with no notes
   const lastNote = db
     .select({
-      last_note_at: sql<Date | null>`max(${notes.createdAt})`.as("last_note_at"),
+      last_note_at: sql<Date | null>`max(${notes.createdAt})`.as(
+        "last_note_at",
+      ),
     })
     .from(notes)
     .where(eq(notes.contactId, contacts.id))
@@ -238,7 +241,11 @@ export async function listDueContacts(
         groupId === null ? undefined : inGroup(groupId),
       ),
     )
-    .orderBy(asc(dueAt), sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
+    .orderBy(
+      asc(dueAt),
+      sql`${contacts.name} collate "ru-x-icu"`,
+      asc(contacts.id),
+    );
 
   // The condition above guarantees an interval and a due date
   return rows.flatMap((row) =>
@@ -269,7 +276,9 @@ export async function listGroups(): Promise<GroupListItem[]> {
 }
 
 // Ids of the groups the contact is in
-export async function listContactGroupIds(contactId: number): Promise<number[]> {
+export async function listContactGroupIds(
+  contactId: number,
+): Promise<number[]> {
   const rows = await db
     .select({ groupId: contactGroups.groupId })
     .from(contactGroups)
@@ -277,7 +286,8 @@ export async function listContactGroupIds(contactId: number): Promise<number[]> 
   return rows.map((row) => row.groupId);
 }
 
-export type SetContactGroupResult = "ok" | "contact-not-found" | "group-not-found";
+export type SetContactGroupResult =
+  "ok" | "contact-not-found" | "group-not-found";
 
 // Puts the contact into the group or takes it out. Doing it again is harmless.
 // Only this one group changes, so two tabs with different groups of one contact

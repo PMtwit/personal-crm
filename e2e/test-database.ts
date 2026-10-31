@@ -14,7 +14,9 @@ export function testDatabaseUrl(suffix = "test"): string {
   loadEnvConfig(process.cwd());
   const mainUrl = process.env.DATABASE_URL;
   if (!mainUrl) {
-    throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
+    throw new Error(
+      "DATABASE_URL is not set. Copy .env.example to .env and fill it in.",
+    );
   }
   const url = new URL(mainUrl);
   url.pathname = `${url.pathname.replace(/^\//, "")}_${suffix}`;

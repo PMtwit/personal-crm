@@ -197,7 +197,11 @@ function DetailRow({
 
 function ContactCardSkeleton() {
   return (
-    <div className="flex flex-col gap-8" aria-busy aria-label="Загружаю контакт">
+    <div
+      className="flex flex-col gap-8"
+      aria-busy
+      aria-label="Загружаю контакт"
+    >
       <div className="-mx-1 flex flex-col gap-5 rounded-block bg-muted p-5 sm:mx-0 sm:rounded-block-lg sm:p-8">
         <Skeleton className="size-24 rounded-avatar-lg bg-background" />
         <Skeleton className="h-8 w-56 bg-background" />

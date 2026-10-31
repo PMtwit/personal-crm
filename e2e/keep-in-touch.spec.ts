@@ -252,7 +252,9 @@ test("контакт удалён в другой вкладке → «Конт�
   ).toBeVisible();
   // Nothing was saved, and the pill shows what is really stored
   await expect(intervalRadio(page, "Не задано")).toBeChecked();
-  expect(await query("select 1 from contacts where id = $1", [id])).toHaveLength(0);
+  expect(
+    await query("select 1 from contacts where id = $1", [id]),
+  ).toHaveLength(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -377,7 +379,9 @@ test("нажал на строку, не на кнопку → открылас�
   await page.goto("/");
 
   // By the name
-  await dueNames(page).filter({ hasText: fullName("Анна") }).click();
+  await dueNames(page)
+    .filter({ hasText: fullName("Анна") })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/contacts/${id}$`));
   await expect(
     page.getByRole("heading", { level: 1, name: fullName("Анна") }),
@@ -423,7 +427,9 @@ test("удалил контакт из блока → его там больше
   const id = await createOverdue("Анна", 5);
   await createOverdue("Борис", 4);
   await page.goto("/");
-  await dueNames(page).filter({ hasText: fullName("Анна") }).click();
+  await dueNames(page)
+    .filter({ hasText: fullName("Анна") })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/contacts/${id}$`));
 
   await page.getByRole("button", { name: "Удалить", exact: true }).click();
@@ -448,10 +454,14 @@ test("просроченных 12 → видно пять, «Показать в
   await expect(dueRows(page)).toHaveCount(5);
   // The most overdue go first: 12, 11, ...
   await expect(dueNames(page).first()).toHaveText(fullName("12"));
-  await dueBlock(page).getByRole("button", { name: "Показать всех (12)" }).click();
+  await dueBlock(page)
+    .getByRole("button", { name: "Показать всех (12)" })
+    .click();
 
   await expect(dueRows(page)).toHaveCount(12);
-  await expect(dueBlock(page).getByRole("button", { name: "Свернуть" })).toBeVisible();
+  await expect(
+    dueBlock(page).getByRole("button", { name: "Свернуть" }),
+  ).toBeVisible();
   await dueBlock(page).getByRole("button", { name: "Свернуть" }).click();
 
   await expect(dueRows(page)).toHaveCount(5);
@@ -463,13 +473,19 @@ test("просроченных 12 → видно пять, «Показать в
 test("просроченных три → видно всех, кнопки «Показать всех» нет", async ({
   page,
 }) => {
-  for (const [label, days] of [["Анна", 30], ["Борис", 20], ["Вера", 10]] as const) {
+  for (const [label, days] of [
+    ["Анна", 30],
+    ["Борис", 20],
+    ["Вера", 10],
+  ] as const) {
     await createOverdue(label, days);
   }
   await page.goto("/");
 
   await expect(dueRows(page)).toHaveCount(3);
-  await expect(dueBlock(page).getByRole("button", { name: /Показать всех|Свернуть/ })).toHaveCount(0);
+  await expect(
+    dueBlock(page).getByRole("button", { name: /Показать всех|Свернуть/ }),
+  ).toHaveCount(0);
 });
 
 test("поиск скрывает блок, очистка запроса возвращает", async ({ page }) => {
@@ -477,7 +493,9 @@ test("поиск скрывает блок, очистка запроса воз
   await page.goto("/");
   await expect(dueBlock(page)).toBeVisible();
 
-  const search = page.getByRole("searchbox", { name: "Найти контакт по имени" });
+  const search = page.getByRole("searchbox", {
+    name: "Найти контакт по имени",
+  });
   await search.fill("Автотест");
   await expect(page).toHaveURL(/\?q=/);
   await expect(page.getByText(/^Найдено: /)).toBeVisible();
@@ -500,7 +518,9 @@ function noteDialog(page: Page) {
   return page.getByRole("dialog", { name: "Новая заметка" });
 }
 
-test("на телефоне кнопка «Уже», на компьютере «Уже связался»", async ({ page }) => {
+test("на телефоне кнопка «Уже», на компьютере «Уже связался»", async ({
+  page,
+}) => {
   await createOverdue("Анна", 5);
 
   await page.setViewportSize({ width: 375, height: 800 });
@@ -516,7 +536,10 @@ test("на телефоне кнопка «Уже», на компьютере �
   });
 });
 
-for (const [device, width] of [["телефоне", 375], ["компьютере", 1280]] as const) {
+for (const [device, width] of [
+  ["телефоне", 375],
+  ["компьютере", 1280],
+] as const) {
   test(`на ${device} кнопка не выше строки имени, строка не выше обычной`, async ({
     page,
   }) => {
@@ -564,7 +587,9 @@ test("длинное имя на телефоне → одна строка с �
   expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(375);
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth,
     ),
   ).toBe(false);
 });
@@ -579,7 +604,9 @@ test("нажал «Уже» → окно с именем и «Связался»
 
   const dialog = noteDialog(page);
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(`${fullName("Мария Кузнецова")}.`)).toBeVisible();
+  await expect(
+    dialog.getByText(`${fullName("Мария Кузнецова")}.`),
+  ).toBeVisible();
   const field = dialog.getByRole("textbox", { name: "Текст заметки" });
   await expect(field).toHaveValue("Связался");
   // The cursor is in the field, after the text
@@ -617,7 +644,9 @@ test("«Сохранить» сразу → окно закрылось, кон�
   const notes = page.getByRole("list", { name: "Заметки о контакте" });
   await expect(notes.getByRole("listitem").first()).toContainText("Связался");
   await expect(
-    page.getByText(`Связаться до ${dayMonth(new Date(Date.now() + 7 * DAY_MS))}`),
+    page.getByText(
+      `Связаться до ${dayMonth(new Date(Date.now() + 7 * DAY_MS))}`,
+    ),
   ).toBeVisible();
 });
 

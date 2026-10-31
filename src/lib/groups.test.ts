@@ -70,7 +70,9 @@ const thousand = (1000).toLocaleString("ru-RU");
 
 describe("listCaption", () => {
   it("Вернулся ко всем", () => {
-    expect(listCaption({ query: "", group: null, shown: 1000, total: 1000 })).toEqual({
+    expect(
+      listCaption({ query: "", group: null, shown: 1000, total: 1000 }),
+    ).toEqual({
       caption: `Всего ${thousand} контактов`,
       empty: null,
     });
@@ -101,19 +103,28 @@ describe("listCaption", () => {
 
   it("Поиск внутри группы", () => {
     expect(
-      listCaption({ query: "Ан", group: { name: "Семья" }, shown: 1, total: 5 }),
+      listCaption({
+        query: "Ан",
+        group: { name: "Семья" },
+        shown: 1,
+        total: 5,
+      }),
     ).toEqual({ caption: "Найдено: 1 из 5", empty: null });
   });
 
   it("Поиск без группы", () => {
-    expect(listCaption({ query: "Ан", group: null, shown: 12, total: 1000 })).toEqual({
+    expect(
+      listCaption({ query: "Ан", group: null, shown: 12, total: 1000 }),
+    ).toEqual({
       caption: `Найдено: 12 из ${thousand}`,
       empty: null,
     });
   });
 
   it("Никого не нашлось без группы", () => {
-    expect(listCaption({ query: "Ян", group: null, shown: 0, total: 30 })).toEqual({
+    expect(
+      listCaption({ query: "Ян", group: null, shown: 0, total: 30 }),
+    ).toEqual({
       caption: "Найдено: 0 из 30",
       empty: "Никого не нашлось по запросу «Ян»",
     });

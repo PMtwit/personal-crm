@@ -11,7 +11,10 @@ export default function NotFound() {
       <p className="text-pretty text-muted-foreground sm:text-lg">
         Возможно, в адресе опечатка или контакта с таким номером не существует
       </p>
-      <Link href="/" className={buttonVariants({ size: "lg", className: "mt-2" })}>
+      <Link
+        href="/"
+        className={buttonVariants({ size: "lg", className: "mt-2" })}
+      >
         К списку контактов
       </Link>
     </div>

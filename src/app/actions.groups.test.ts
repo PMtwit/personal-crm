@@ -293,9 +293,14 @@ describe("Удаление группы", () => {
 
     expect(await groupNames()).toEqual(["Семья"]);
     // Both people are in place, with their notes, interval and other groups
-    expect(await db.select({ name: contacts.name }).from(contacts)).toHaveLength(2);
+    expect(
+      await db.select({ name: contacts.name }).from(contacts),
+    ).toHaveLength(2);
     expect(await db.select().from(notes)).toHaveLength(1);
-    const [annaRow] = await db.select().from(contacts).where(eq(contacts.id, anna));
+    const [annaRow] = await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.id, anna));
     expect(annaRow.touchInterval).toBe("month");
     expect(annaRow.touchIntervalSetAt).not.toBeNull();
     expect(await listContactGroupIds(anna)).toEqual([family]);

@@ -127,7 +127,11 @@ function groupByLetter(
 
 export function ContactListSkeleton() {
   return (
-    <div className="flex flex-col gap-4" aria-busy aria-label="Загружаю контакты">
+    <div
+      className="flex flex-col gap-4"
+      aria-busy
+      aria-label="Загружаю контакты"
+    >
       <Skeleton className="h-4 w-32" />
       <div className="flex flex-col gap-1">
         {Array.from({ length: 8 }, (_, index) => (

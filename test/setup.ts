@@ -20,7 +20,9 @@ beforeEach(async () => {
   );
   if (rows.length > 0) {
     const tables = rows.map((row) => row.name).join(", ");
-    await db.execute(sql.raw(`truncate table ${tables} restart identity cascade`));
+    await db.execute(
+      sql.raw(`truncate table ${tables} restart identity cascade`),
+    );
   }
 });
 

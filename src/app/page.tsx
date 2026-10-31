@@ -20,7 +20,9 @@ export default function ContactsPage({ searchParams }: PageProps<"/">) {
           {/* On phones the wide button text doesn't fit next to the title: only "+" is shown */}
           <Link
             href="/contacts/new"
-            className={buttonVariants({ className: "max-sm:size-11 max-sm:px-0" })}
+            className={buttonVariants({
+              className: "max-sm:size-11 max-sm:px-0",
+            })}
           >
             <Plus aria-hidden className="size-4 max-sm:size-5" />
             <span className="max-sm:sr-only">Добавить контакт</span>
