@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточка контакта — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&amp;family=Unbounded:wght@700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#626c77;text-decoration:none}a:hover{color:#1d2023}
+textarea::placeholder{color:#969fa8}
+label:has(input:focus-visible){outline:2px solid #ff0032;outline-offset:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; overflow-y: auto; box-sizing: border-box; background: #ffffff; color: #1d2023; font-family: Onest, system-ui, sans-serif; font-size: 16px; line-height: 1.5">
+  <header style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 16px">
+    <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: #ff0032; color: #ffffff; display: flex; align-items: center; justify-content: center; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 14px">Л</span>
+    <span style="font-size: 17px; font-weight: 500">Личная CRM</span>
+  </header>
+
+  <main style="padding: 8px 16px 40px; display: flex; flex-direction: column; gap: 24px">
+    <a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; width: fit-content">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Все контакты
+    </a>
+
+    <article style="display: flex; flex-direction: column; gap: 32px">
+      <header style="margin: 0 -4px; display: flex; flex-direction: column; gap: 20px; padding: 20px; border-radius: 32px; background: linear-gradient(160deg, #eef1fb, #e2e7f7)">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px">
+          <span aria-hidden="true" style="width: 96px; height: 96px; border-radius: 24px; background: #ffffff; color: #ff0032; font-size: 30px; font-weight: 700; display: flex; align-items: center; justify-content: center">ПС</span>
+          <div style="display: grid; gap: 8px">
+            <a href="#" style="height: 44px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #e2e7f7; border-radius: 16px; background: #ffffff; color: #1d2023; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"></path><path d="m15 5 4 4"></path></svg>
+              Изменить
+            </a>
+            <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #e2e7f7; border-radius: 16px; background: #ffffff; color: #d6002a; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">Удалить</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <h1 style="margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 500">Пётр Соколов</h1>
+          <p style="margin: 0; color: #626c77">Бывший коллега, теперь живёт в Казани</p>
+        </div>
+        <dl style="margin: 0; display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 20px; background: #ffffff; box-shadow: 0 8px 24px rgba(60, 70, 120, 0.08)">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <dt style="font-size: 14px; color: #626c77">Откуда знакомы</dt>
+            <dd style="margin: 0">Работали вместе в Контуре</dd>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <dt style="font-size: 14px; color: #626c77">Телефон</dt>
+            <dd style="margin: 0"><a href="#" style="color: #1d2023">+7 900 123-45-67</a></dd>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <dt style="font-size: 14px; color: #626c77">Почта</dt>
+            <dd style="margin: 0"><a href="#" style="color: #1d2023">petr@example.com</a></dd>
+          </div>
+        </dl>
+      </header>
+
+      <section style="display: flex; flex-direction: column; gap: 12px">
+        <fieldset style="border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+          <legend style="padding: 0; margin-bottom: 12px; font-size: 18px; line-height: 1.3; font-weight: 500">Как часто общаться</legend>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <sc-for list="{{options}}" as="opt" hint-placeholder-count="5">
+              <label style="position: relative; height: 44px; box-sizing: border-box; padding: 0 16px; display: inline-flex; align-items: center; border: 1px solid {{opt.border}}; border-radius: 999px; background: {{opt.bg}}; color: {{opt.fg}}; font-size: 15px; font-weight: 500; cursor: pointer">
+                <input type="radio" name="touch-interval-phone" value="{{opt.id}}" checked="{{opt.checked}}" onChange="{{opt.pick}}" style="position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0">
+                {{opt.label}}
+              </label>
+            </sc-for>
+          </div>
+        </fieldset>
+        <div aria-live="polite" style="min-height: 24px">
+          <sc-if value="{{saving}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; display: flex; align-items: center; gap: 8px; color: #626c77; font-size: 15px">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.22-8.56"></path></svg>
+              Сохраняю…
+            </p>
+          </sc-if>
+          <sc-if value="{{showOverdue}}" hint-placeholder-val="{{ true }}">
+            <p style="margin: 0; display: flex; align-items: center; gap: 8px; color: #d6002a; font-weight: 500">
+              <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #ff0032; flex-shrink: 0"></span>
+              {{statusText}}
+            </p>
+          </sc-if>
+          <sc-if value="{{showUpcoming}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; color: #626c77">{{statusText}}</p>
+          </sc-if>
+        </div>
+      </section>
+
+      <section aria-labelledby="notes-heading" style="display: flex; flex-direction: column; gap: 16px">
+        <h2 id="notes-heading" style="margin: 0; display: flex; align-items: baseline; gap: 10px; font-size: 18px; font-weight: 500">
+          Заметки
+          <span style="font-size: 14px; font-weight: 400; color: #626c77">2 заметки</span>
+        </h2>
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <label for="note-phone" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Новая заметка</label>
+          <textarea id="note-phone" rows="3" placeholder="О чём поговорили, о чём договорились…" style="min-height: 96px; box-sizing: border-box; width: 100%; resize: none; border: 1px solid transparent; border-radius: 14px; background: #f2f3f7; padding: 12px 16px; font-family: Onest, system-ui, sans-serif; font-size: 16px; color: #1d2023; outline: none"></textarea>
+          <button type="button" style="align-self: flex-start; height: 44px; padding: 0 20px; border: 0; border-radius: 16px; background: #ff0032; color: #ffffff; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">Добавить заметку</button>
+        </div>
+        <ol aria-label="Заметки о контакте" style="list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+          <li style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: 14px; background: #f2f3f7">
+            <time style="font-size: 12px; color: #626c77">16 сентября 2026, 19:40</time>
+            <p style="margin: 0">Созвонились, обсудили его переезд. Обещал прислать фото новой квартиры.</p>
+          </li>
+          <li style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: 14px; background: #f2f3f7">
+            <time style="font-size: 12px; color: #626c77">2 августа 2026, 12:15</time>
+            <p style="margin: 0">Обедали в «Пушкине», он сменил работу.</p>
+          </li>
+        </ol>
+      </section>
+    </article>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"initial":{"editor":"enum","options":["none","week","month","quarter","year"],"default":"month"},"selectedColor":{"editor":"color","options":["#1d2023","#d6002a"],"default":"#1d2023"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { interval: null, saving: false };
+  }
+  componentWillUnmount() {
+    clearTimeout(this.timer);
+  }
+  pick(id) {
+    clearTimeout(this.timer);
+    this.setState({ interval: id, saving: true });
+    this.timer = setTimeout(() => this.setState({ saving: false }), 900);
+  }
+  renderVals() {
+    // Example: today is 31 October 2026, the last note was written on 16 September 2026
+    const statuses = {
+      none: null,
+      week: { overdue: true, text: 'Пора связаться: просрочено на 38 дней' },
+      month: { overdue: true, text: 'Пора связаться: просрочено на 15 дней' },
+      quarter: { overdue: false, text: 'Связаться до 16 декабря' },
+      year: { overdue: false, text: 'Связаться до 16 сентября 2027' }
+    };
+    const labels = [
+      ['none', 'Не задано'],
+      ['week', 'Раз в неделю'],
+      ['month', 'Раз в месяц'],
+      ['quarter', 'Раз в квартал'],
+      ['year', 'Раз в год']
+    ];
+    const selectedColor = this.props.selectedColor ?? '#1d2023';
+    const current = this.state.interval ?? this.props.initial ?? 'month';
+    const status = statuses[current];
+    const saving = this.state.saving;
+    return {
+      options: labels.map(([id, label]) => {
+        const checked = id === current;
+        return {
+          id,
+          label,
+          checked,
+          bg: checked ? selectedColor : '#ffffff',
+          fg: checked ? '#ffffff' : '#1d2023',
+          border: checked ? selectedColor : '#e2e7f7',
+          pick: () => this.pick(id)
+        };
+      }),
+      saving,
+      showOverdue: !saving && !!status && status.overdue,
+      showUpcoming: !saving && !!status && !status.overdue,
+      statusText: status ? status.text : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

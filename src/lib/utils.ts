@@ -9,8 +9,13 @@ export const cn = createCn({
       text: [
         "title",
         "title-lg",
+        "section",
+        "section-lg",
+        "meta",
+        "button-sm",
         "button",
         "button-lg",
+        "chip",
         "logo",
         "logo-lg",
         "logo-mark",

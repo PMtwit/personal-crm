@@ -5,12 +5,18 @@ type Gender = "m" | "f";
 
 export type SeedNote = { body: string; createdAt: Date };
 
+// How often to keep in touch; same values as the database enum
+type SeedTouchInterval = "week" | "month" | "quarter" | "year";
+
 export type SeedContact = {
   name: string;
   about: string | null;
   howWeMet: string | null;
   phone: string | null;
   email: string | null;
+  // Both are set or both are empty
+  touchInterval: SeedTouchInterval | null;
+  touchIntervalSetAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   notes: SeedNote[];
@@ -18,8 +24,28 @@ export type SeedContact = {
 
 // Row for the contacts table: everything except notes
 export function toContactRow(contact: SeedContact) {
-  const { name, about, howWeMet, phone, email, createdAt, updatedAt } = contact;
-  return { name, about, howWeMet, phone, email, createdAt, updatedAt };
+  const {
+    name,
+    about,
+    howWeMet,
+    phone,
+    email,
+    touchInterval,
+    touchIntervalSetAt,
+    createdAt,
+    updatedAt,
+  } = contact;
+  return {
+    name,
+    about,
+    howWeMet,
+    phone,
+    email,
+    touchInterval,
+    touchIntervalSetAt,
+    createdAt,
+    updatedAt,
+  };
 }
 
 // mulberry32: tiny seeded PRNG, so every run produces the same data
@@ -284,6 +310,29 @@ function makePhone(random: Random): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// About a quarter of contacts get an interval: more often "once a month" and
+// "once a quarter". The rest stay without it, like contacts added by hand
+const touchIntervalChoices: readonly [SeedTouchInterval, number][] = [
+  ["week", 15],
+  ["month", 35],
+  ["quarter", 35],
+  ["year", 15],
+];
+
+function pickTouchInterval(random: Random): SeedTouchInterval | null {
+  if (!random.chance(0.25)) {
+    return null;
+  }
+  let point = random.next() * 100;
+  for (const [interval, weight] of touchIntervalChoices) {
+    if (point < weight) {
+      return interval;
+    }
+    point -= weight;
+  }
+  return "month";
+}
+
 // Move a moment to daytime (9:00-21:59 Moscow time), never past "now"
 function atDaytime(random: Random, date: Date, now: Date): Date {
   const result = new Date(date);
@@ -297,6 +346,8 @@ export function generateContacts(
   now = new Date("2026-10-09T18:00:00+03:00"),
 ): SeedContact[] {
   const random = createRandom(20261010);
+  // Own generator: adding intervals does not change names, notes and the rest
+  const touchRandom = createRandom(20261031);
   const usedNames = new Set<string>();
   const usedEmails = new Set<string>();
   const result: SeedContact[] = [];
@@ -335,6 +386,19 @@ export function generateContacts(
       ),
     })).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+    // The interval was chosen some time after the contact was added
+    const touchInterval = pickTouchInterval(touchRandom);
+    const touchIntervalSetAt = touchInterval
+      ? atDaytime(
+          touchRandom,
+          new Date(
+            createdAt.getTime() +
+              touchRandom.next() * (now.getTime() - createdAt.getTime()),
+          ),
+          now,
+        )
+      : null;
+
     result.push({
       name,
       about: random.chance(0.9) ? aboutText(random, gender) : null,
@@ -343,6 +407,8 @@ export function generateContacts(
       email: random.chance(0.7)
         ? makeEmail(random, firstName, surname, usedEmails)
         : null,
+      touchInterval,
+      touchIntervalSetAt,
       createdAt,
       updatedAt: createdAt,
       notes,

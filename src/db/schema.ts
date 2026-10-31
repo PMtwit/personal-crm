@@ -1,4 +1,21 @@
-import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+// How often the owner wants to talk to a contact; null on the contact means "not set"
+export const touchIntervalEnum = pgEnum("touch_interval", [
+  "week",
+  "month",
+  "quarter",
+  "year",
+]);
 
 export const contacts = pgTable(
   "contacts",
@@ -10,6 +27,12 @@ export const contacts = pgTable(
     howWeMet: text("how_we_met"),
     phone: text("phone"),
     email: text("email"),
+    touchInterval: touchIntervalEnum("touch_interval"),
+    // When the interval was set or changed: the countdown starts here
+    // while the contact has no notes
+    touchIntervalSetAt: timestamp("touch_interval_set_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -17,7 +40,13 @@ export const contacts = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("contacts_name_idx").on(table.name)],
+  (table) => [
+    index("contacts_name_idx").on(table.name),
+    check(
+      "contacts_touch_interval_pair_check",
+      sql`(${table.touchInterval} is null) = (${table.touchIntervalSetAt} is null)`,
+    ),
+  ],
 );
 
 export const notes = pgTable(

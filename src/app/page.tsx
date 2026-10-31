@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { ContactList, ContactListSkeleton } from "@/components/contact-list";
 import { DeletedNotice } from "@/components/deleted-notice";
+import { DueContacts } from "@/components/due-contacts";
 import { SearchBox, SearchBoxFallback } from "@/components/search-box";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -31,6 +32,9 @@ export default function ContactsPage({ searchParams }: PageProps<"/">) {
           <DeletedNotice />
         </Suspense>
       </div>
+      <Suspense fallback={null}>
+        <DueContacts searchParams={searchParams} />
+      </Suspense>
       <Suspense fallback={<ContactListSkeleton />}>
         <ContactList searchParams={searchParams} />
       </Suspense>
