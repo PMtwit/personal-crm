@@ -42,8 +42,8 @@ export type ContactValues = Record<ContactField, string>;
 
 const MAX_ID = 2_147_483_647;
 
-// Contact id from the URL; null for anything that cannot be an id
-export function parseContactId(raw: string): number | null {
+// Contact or group id from the URL or a form; null for anything that cannot be an id
+export function parseId(raw: string): number | null {
   if (!/^\d{1,10}$/.test(raw)) {
     return null;
   }
@@ -66,3 +66,9 @@ export const noteSchema = z.object({
     .min(1, "Заметка пустая")
     .max(10000, "Слишком длинно: не больше 10 000 символов"),
 });
+
+export const groupNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Укажите название")
+  .max(50, "Слишком длинно: не больше 50 символов");

@@ -7,8 +7,8 @@ import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
-import { contacts, notes } from "../src/db/schema.ts";
-import { generateContacts, toContactRow } from "./seed-data.ts";
+import { contactGroups, contacts, groups, notes } from "../src/db/schema.ts";
+import { generateContacts, SEED_GROUPS, toContactRow } from "./seed-data.ts";
 
 const CONTACT_COUNT = 1000;
 
@@ -33,7 +33,7 @@ async function main() {
 
     const seed = generateContacts(CONTACT_COUNT);
 
-    const noteCount = await db.transaction(async (tx) => {
+    const counts = await db.transaction(async (tx) => {
       const inserted = await tx
         .insert(contacts)
         .values(seed.map(toContactRow))
@@ -51,10 +51,29 @@ async function main() {
       if (noteRows.length > 0) {
         await tx.insert(notes).values(noteRows);
       }
-      return noteRows.length;
+
+      // The groups and who is in them: in the same transaction, so a failure
+      // leaves the database empty, not half filled
+      const insertedGroups = await tx
+        .insert(groups)
+        .values(SEED_GROUPS.map((name) => ({ name })))
+        .returning({ id: groups.id, name: groups.name });
+      const idByGroupName = new Map(insertedGroups.map((row) => [row.name, row.id]));
+      const membershipRows = seed.flatMap((contact) =>
+        contact.groups.map((group) => ({
+          contactId: idByName.get(contact.name)!,
+          groupId: idByGroupName.get(group)!,
+        })),
+      );
+      if (membershipRows.length > 0) {
+        await tx.insert(contactGroups).values(membershipRows);
+      }
+      return { notes: noteRows.length, groups: insertedGroups.length };
     });
 
-    console.log(`Added ${seed.length} contacts and ${noteCount} notes.`);
+    console.log(
+      `Added ${seed.length} contacts, ${counts.notes} notes and ${counts.groups} groups.`,
+    );
   } finally {
     await pool.end();
   }

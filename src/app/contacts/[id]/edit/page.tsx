@@ -7,7 +7,7 @@ import { BackLink } from "@/components/back-link";
 import { ContactForm } from "@/components/contact-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getContact } from "@/lib/data";
-import { parseContactId, toContactValues } from "@/lib/validation";
+import { parseId, toContactValues } from "@/lib/validation";
 
 export const metadata: Metadata = {
   title: "Изменить контакт",
@@ -28,7 +28,7 @@ async function EditContact({
 }: {
   params: PageProps<"/contacts/[id]/edit">["params"];
 }) {
-  const id = parseContactId((await params).id);
+  const id = parseId((await params).id);
   if (id === null) {
     notFound();
   }

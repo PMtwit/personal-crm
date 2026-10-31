@@ -6,15 +6,22 @@ import { Suspense } from "react";
 
 import { BackLink } from "@/components/back-link";
 import { ContactAvatar } from "@/components/contact-avatar";
+import { ContactGroupsPicker } from "@/components/contact-groups-picker";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { NoteForm } from "@/components/note-form";
 import { TouchIntervalPicker } from "@/components/touch-interval-picker";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getContact, getTouchStatus, listNotes } from "@/lib/data";
+import {
+  getContact,
+  getTouchStatus,
+  listContactGroupIds,
+  listGroups,
+  listNotes,
+} from "@/lib/data";
 import { formatDateTime, notesCount } from "@/lib/format";
 import { touchStatusLine } from "@/lib/keep-in-touch";
-import { parseContactId } from "@/lib/validation";
+import { parseId } from "@/lib/validation";
 
 export const metadata: Metadata = {
   title: "Контакт",
@@ -36,14 +43,16 @@ async function ContactCard({
 }: {
   params: PageProps<"/contacts/[id]">["params"];
 }) {
-  const id = parseContactId((await params).id);
+  const id = parseId((await params).id);
   if (id === null) {
     notFound();
   }
-  const [contact, notes, touch] = await Promise.all([
+  const [contact, notes, touch, groups, memberOf] = await Promise.all([
     getContact(id),
     listNotes(id),
     getTouchStatus(id),
+    listGroups(),
+    listContactGroupIds(id),
   ]);
   if (!contact) {
     notFound();
@@ -109,6 +118,16 @@ async function ContactCard({
           </DetailRow>
         </dl>
       </header>
+
+      {/* Who this person is to the owner: next to the header */}
+      <ContactGroupsPicker
+        // Its own key: a sibling below already has key={contact.id}
+        key={`groups-${contact.id}`}
+        contactId={contact.id}
+        contactName={contact.name}
+        groups={groups.map(({ id, name }) => ({ id, name }))}
+        memberOf={memberOf}
+      />
 
       {/* Next to the notes: a new note restarts the countdown */}
       <TouchIntervalPicker
@@ -183,6 +202,14 @@ function ContactCardSkeleton() {
         <Skeleton className="size-24 rounded-avatar-lg bg-background" />
         <Skeleton className="h-8 w-56 bg-background" />
         <Skeleton className="h-36 w-full rounded-card bg-background sm:rounded-card-lg" />
+      </div>
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-6 w-24" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} className="h-11 w-28 rounded-full" />
+          ))}
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-6 w-44" />

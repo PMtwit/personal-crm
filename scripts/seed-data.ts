@@ -5,6 +5,17 @@ type Gender = "m" | "f";
 
 export type SeedNote = { body: string; createdAt: Date };
 
+// Groups of the demo data: the owner makes up their own, these are examples
+export const SEED_GROUPS = [
+  "Семья",
+  "Друзья",
+  "Знакомые",
+  "Дача",
+  "Аналитики",
+] as const;
+
+export type SeedGroup = (typeof SEED_GROUPS)[number];
+
 // How often to keep in touch; same values as the database enum
 type SeedTouchInterval = "week" | "month" | "quarter" | "year";
 
@@ -20,9 +31,11 @@ export type SeedContact = {
   createdAt: Date;
   updatedAt: Date;
   notes: SeedNote[];
+  // Groups of the contact; empty for contacts in no group
+  groups: SeedGroup[];
 };
 
-// Row for the contacts table: everything except notes
+// Row for the contacts table: everything except notes and groups
 export function toContactRow(contact: SeedContact) {
   const {
     name,
@@ -333,6 +346,38 @@ function pickTouchInterval(random: Random): SeedTouchInterval | null {
   return "month";
 }
 
+// How likely a group is to be picked: the family and the dacha are the smallest,
+// acquaintances the biggest, as in life
+const groupChoices: readonly [SeedGroup, number][] = [
+  ["Знакомые", 35],
+  ["Друзья", 30],
+  ["Аналитики", 20],
+  ["Дача", 8],
+  ["Семья", 7],
+];
+
+// About 70% of contacts are in a group: three of four in one, the rest in two
+function pickGroups(random: Random): SeedGroup[] {
+  if (!random.chance(0.7)) {
+    return [];
+  }
+  const wanted = random.chance(0.25) ? 2 : 1;
+  const picked: SeedGroup[] = [];
+  while (picked.length < wanted) {
+    let point = random.next() * groupChoices.reduce((sum, [, weight]) => sum + weight, 0);
+    for (const [group, weight] of groupChoices) {
+      if (point < weight) {
+        if (!picked.includes(group)) {
+          picked.push(group);
+        }
+        break;
+      }
+      point -= weight;
+    }
+  }
+  return picked;
+}
+
 // Move a moment to daytime (9:00-21:59 Moscow time), never past "now"
 function atDaytime(random: Random, date: Date, now: Date): Date {
   const result = new Date(date);
@@ -348,6 +393,8 @@ export function generateContacts(
   const random = createRandom(20261010);
   // Own generator: adding intervals does not change names, notes and the rest
   const touchRandom = createRandom(20261031);
+  // Same for groups: names, notes and intervals stay what they were
+  const groupRandom = createRandom(20261101);
   const usedNames = new Set<string>();
   const usedEmails = new Set<string>();
   const result: SeedContact[] = [];
@@ -412,6 +459,7 @@ export function generateContacts(
       createdAt,
       updatedAt: createdAt,
       notes,
+      groups: pickGroups(groupRandom),
     });
   }
 
