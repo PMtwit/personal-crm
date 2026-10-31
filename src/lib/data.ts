@@ -74,6 +74,16 @@ export async function updateContact(
   return updated.length > 0;
 }
 
+// Returns the deleted contact's name, or null if there was no such contact.
+// The contact's notes are deleted by the database: the foreign key cascades
+export async function deleteContact(id: number): Promise<string | null> {
+  const [deleted] = await db
+    .delete(contacts)
+    .where(eq(contacts.id, id))
+    .returning({ name: contacts.name });
+  return deleted?.name ?? null;
+}
+
 export async function insertNote(
   contactId: number,
   body: string,
