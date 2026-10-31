@@ -1,0 +1,30 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-31T13:45:00Z" },
+  "title": "Пора связаться — макеты",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Главная · телефон", "is_interactive": true },
+    "Note-Phone.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Окно заметки после «Уже» · телефон", "is_interactive": true },
+    "Card-Phone.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Карточка · телефон", "is_interactive": true },
+    "Frequency-States.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 1820, "title": "«Как часто общаться»: все состояния · телефон" },
+    "Home-Desktop.dc.html": { "x": 0, "y": 2200, "w": 1280, "h": 1180, "title": "Главная · компьютер", "expand": "fill", "is_interactive": true },
+    "Note-Desktop.dc.html": { "x": 1360, "y": 2200, "w": 1280, "h": 1180, "title": "Окно заметки после «Уже связался» · компьютер", "expand": "fill", "is_interactive": true },
+    "Card-Desktop.dc.html": { "x": 2720, "y": 2200, "w": 1280, "h": 1240, "title": "Карточка · компьютер", "expand": "fill", "is_interactive": true }
+  },
+  "order": [
+    "Main.dc.html",
+    "Note-Phone.dc.html",
+    "Card-Phone.dc.html",
+    "Frequency-States.dc.html",
+    "Home-Desktop.dc.html",
+    "Note-Desktop.dc.html",
+    "Card-Desktop.dc.html"
+  ],
+  "notes": {
+    "phoneTitle": { "x": 0, "y": -260, "text": "Телефон", "kind": "title1", "maxW": 1800 },
+    "desktopTitle": { "x": 0, "y": 1940, "text": "Компьютер", "kind": "title1", "maxW": 4000 }
+  },
+  "designSystems": []
+}

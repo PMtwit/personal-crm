@@ -58,12 +58,29 @@
   --text-title-lg--line-height: 1.12;
   --text-title-lg--letter-spacing: -0.02em;
 
+  /* Headings of blocks on the list: "Пора связаться" */
+  --text-section: 20px;
+  --text-section--line-height: 1.2;
+  --text-section-lg: 22px;
+  --text-section-lg--line-height: 1.2;
+
+  /* Small secondary line: how overdue a contact is, on phones */
+  --text-meta: 13px;
+
+  /* The small button in a list row: "Уже связался" */
+  --text-button-sm: 11px;
+  --text-button-sm--line-height: 1;
+  --text-button-sm--letter-spacing: 0.02em;
+
   --text-button: 13px;
   --text-button--line-height: 1;
   --text-button--letter-spacing: 0.02em;
   --text-button-lg: 14px;
   --text-button-lg--line-height: 1;
   --text-button-lg--letter-spacing: 0.02em;
+
+  /* Pills of the interval picker: 15px */
+  --text-chip: 15px;
 
   --text-logo: 17px;
   --text-logo-lg: 19px;

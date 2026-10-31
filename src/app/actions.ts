@@ -9,7 +9,9 @@ import {
   insertContact,
   insertNote,
   updateContact,
+  updateTouchInterval,
 } from "@/lib/data";
+import { touchIntervalFormSchema } from "@/lib/keep-in-touch";
 import {
   contactFields,
   contactSchema,
@@ -25,6 +27,12 @@ export type ContactFormState = {
 
 export type NoteFormState = {
   body?: string;
+  error?: string;
+  // The note was written: a dialog that sent it can close
+  saved?: boolean;
+};
+
+export type TouchIntervalFormState = {
   error?: string;
 };
 
@@ -115,6 +123,28 @@ export async function addNoteAction(
   const saved = await insertNote(id, parsed.data.body);
   if (!saved) {
     return { body, error: "Контакт не найден" };
+  }
+  refreshAllPages();
+  return { saved: true };
+}
+
+export async function setTouchIntervalAction(
+  contactId: number,
+  _previousState: TouchIntervalFormState,
+  formData: FormData,
+): Promise<TouchIntervalFormState> {
+  const id = contactIdSchema.parse(contactId);
+  const parsed = touchIntervalFormSchema.safeParse(formData.get("touchInterval"));
+  if (!parsed.success) {
+    return { error: "Выберите один из вариантов" };
+  }
+
+  const found = await updateTouchInterval(
+    id,
+    parsed.data === "none" ? null : parsed.data,
+  );
+  if (!found) {
+    return { error: "Контакт не найден" };
   }
   refreshAllPages();
   return {};

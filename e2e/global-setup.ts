@@ -40,9 +40,15 @@ export default async function globalSetup() {
     await migrate(db, { migrationsFolder: "drizzle" });
     await db.execute(sql`truncate table ${notes}, ${contacts} restart identity`);
     const seed = generateContacts(SEEDED_CONTACTS);
-    await db
-      .insert(contacts)
-      .values(seed.map(toContactRow));
+    // Without intervals, so that the "Time to get in touch" block is empty
+    // at the start and every test sets up its own contacts
+    await db.insert(contacts).values(
+      seed.map((contact) => ({
+        ...toContactRow(contact),
+        touchInterval: null,
+        touchIntervalSetAt: null,
+      })),
+    );
   } finally {
     await pool.end();
   }

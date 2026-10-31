@@ -8,10 +8,12 @@ import { BackLink } from "@/components/back-link";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { NoteForm } from "@/components/note-form";
+import { TouchIntervalPicker } from "@/components/touch-interval-picker";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getContact, listNotes } from "@/lib/data";
+import { getContact, getTouchStatus, listNotes } from "@/lib/data";
 import { formatDateTime, notesCount } from "@/lib/format";
+import { touchStatusLine } from "@/lib/keep-in-touch";
 import { parseContactId } from "@/lib/validation";
 
 export const metadata: Metadata = {
@@ -38,7 +40,11 @@ async function ContactCard({
   if (id === null) {
     notFound();
   }
-  const [contact, notes] = await Promise.all([getContact(id), listNotes(id)]);
+  const [contact, notes, touch] = await Promise.all([
+    getContact(id),
+    listNotes(id),
+    getTouchStatus(id),
+  ]);
   if (!contact) {
     notFound();
   }
@@ -103,6 +109,14 @@ async function ContactCard({
           </DetailRow>
         </dl>
       </header>
+
+      {/* Next to the notes: a new note restarts the countdown */}
+      <TouchIntervalPicker
+        key={contact.id}
+        contactId={contact.id}
+        value={contact.touchInterval ?? "none"}
+        status={touchStatusLine(touch.dueAt, touch.overdueDays)}
+      />
 
       <section aria-labelledby="notes-heading" className="flex flex-col gap-4">
         <h2
@@ -169,6 +183,14 @@ function ContactCardSkeleton() {
         <Skeleton className="size-24 rounded-avatar-lg bg-background" />
         <Skeleton className="h-8 w-56 bg-background" />
         <Skeleton className="h-36 w-full rounded-card bg-background sm:rounded-card-lg" />
+      </div>
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-6 w-44" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 5 }, (_, index) => (
+            <Skeleton key={index} className="h-11 w-28 rounded-full" />
+          ))}
+        </div>
       </div>
       <Skeleton className="h-24 w-full rounded-note sm:rounded-note-lg" />
     </div>

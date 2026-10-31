@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Окно заметки после «Уже» — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&amp;family=Unbounded:wght@700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1d2023;text-decoration:none}a:hover{color:#1d2023}
+input::placeholder{color:#969fa8}
+.row-link::after{content:"";position:absolute;inset:0;border-radius:16px}
+.hit::before{content:"";position:absolute;inset:-8px -6px -4px}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #ffffff; color: #1d2023; font-family: Onest, system-ui, sans-serif; font-size: 16px; line-height: 1.5">
+  <div style="height: 100%; overflow-y: auto; box-sizing: border-box">
+    <header style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 16px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 10px; background: #ff0032; color: #ffffff; display: flex; align-items: center; justify-content: center; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 14px">Л</span>
+      <span style="font-size: 17px; font-weight: 500">Личная CRM</span>
+    </header>
+
+    <main style="padding: 8px 16px 40px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+        <h1 style="margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 500">Контакты</h1>
+        <a href="#" aria-label="Добавить контакт" style="width: 44px; height: 44px; border-radius: 16px; background: #ff0032; color: #ffffff; display: flex; align-items: center; justify-content: center">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        </a>
+      </div>
+
+      <div style="position: relative">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#969fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 16px; top: 14px"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="search" aria-label="Найти контакт по имени" placeholder="Найти по имени" style="width: 100%; height: 48px; box-sizing: border-box; border: 1px solid transparent; border-radius: 16px; background: #f2f3f7; padding: 0 16px 0 48px; font-family: Onest, system-ui, sans-serif; font-size: 16px; color: #1d2023; outline: none">
+      </div>
+
+      <sc-if value="{{showBlock}}" hint-placeholder-val="{{ true }}">
+        <section aria-labelledby="due-title" style="display: flex; flex-direction: column; gap: 12px; padding: 16px 8px 8px; border-radius: 24px; background: linear-gradient(160deg, #eef1fb, #e2e7f7)">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+            <h2 id="due-title" style="margin: 0; font-size: 20px; line-height: 1.2; font-weight: 500">Пора связаться</h2>
+            <span style="min-width: 28px; height: 24px; box-sizing: border-box; padding: 0 9px; border-radius: 999px; background: #ffffff; color: #d6002a; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">{{total}}</span>
+          </div>
+          <ul aria-label="Кому пора написать или позвонить" style="list-style: none; margin: 0; padding: 4px; background: #ffffff; border-radius: 20px; box-shadow: 0 8px 24px rgba(60, 70, 120, 0.08); display: flex; flex-direction: column; gap: 2px">
+            <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+              <li style="position: relative; display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 16px">
+                <span aria-hidden="true" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; background: #f2f3f7; color: #ff0032; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{row.initials}}</span>
+                <div style="flex: 1; min-width: 0; display: grid; grid-template-rows: 24px 20px">
+                  <div style="display: flex; align-items: center; gap: 8px; min-width: 0">
+                    <a href="Card-Phone.dc.html" class="row-link" style="flex: 1; min-width: 0; font-weight: 500; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.name}}</a>
+                    <button type="button" class="hit" aria-haspopup="dialog" aria-label="{{row.label}}" onClick="{{row.open}}" style="position: relative; z-index: 1; flex-shrink: 0; height: 24px; padding: 0 10px; border: 0; border-radius: 8px; background: #f2f3f7; color: #1d2023; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 11px; line-height: 24px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">Уже</button>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0">
+                    <span style="min-width: 0; font-size: 14px; line-height: 20px; color: #626c77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.freq}}</span>
+                    <span style="flex-shrink: 0; font-size: 13px; line-height: 20px; font-weight: 500; color: #d6002a; white-space: nowrap">{{row.overdue}}</span>
+                  </div>
+                </div>
+              </li>
+            </sc-for>
+          </ul>
+          <sc-if value="{{hasMore}}" hint-placeholder-val="{{ true }}">
+            <button type="button" onClick="{{toggle}}" style="align-self: stretch; height: 44px; border: 1px solid #e2e7f7; border-radius: 16px; background: #ffffff; color: #1d2023; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">{{toggleLabel}}</button>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <section aria-label="Список контактов" style="display: flex; flex-direction: column; gap: 12px">
+        <p style="margin: 0; font-size: 14px; color: #626c77">Всего 1 000 контактов</p>
+        <div>
+          <h2 style="margin: 0 0 4px; padding: 0 12px; font-family: Unbounded, system-ui, sans-serif; font-size: 14px; font-weight: 700; color: #ff0032">А</h2>
+          <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px">
+            <sc-for list="{{contacts}}" as="c" hint-placeholder-count="2">
+              <li>
+                <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 20px">
+                  <span aria-hidden="true" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; background: #f2f3f7; color: #ff0032; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{c.initials}}</span>
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.name}}</span>
+                    <span style="font-size: 14px; color: #626c77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.about}}</span>
+                  </span>
+                </a>
+              </li>
+            </sc-for>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <sc-if value="{{noteOpen}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; z-index: 50; box-sizing: border-box; padding: 16px; display: flex; align-items: center; justify-content: center">
+      <button type="button" tabIndex="-1" aria-label="Закрыть окно" onClick="{{cancel}}" style="position: absolute; inset: 0; border: 0; padding: 0; background: rgba(29, 32, 35, 0.2); backdrop-filter: blur(4px); cursor: default"></button>
+      <div role="dialog" aria-modal="true" aria-labelledby="note-title-phone" aria-describedby="note-desc-phone" onKeyDown="{{onKey}}" style="position: relative; width: 100%; box-sizing: border-box; display: grid; gap: 24px; padding: 20px; border-radius: 20px; background: #ffffff; box-shadow: 0 16px 40px rgba(60, 70, 120, 0.1)">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <h2 id="note-title-phone" style="margin: 0; font-size: 18px; line-height: 1.3; font-weight: 500">Новая заметка</h2>
+          <p id="note-desc-phone" style="margin: 0; color: #626c77">{{noteName}}. После сохранения срок отсчитывается заново.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <label for="note-text-phone" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Текст заметки</label>
+          <textarea id="note-text-phone" rows="3" value="{{text}}" onChange="{{onText}}" aria-invalid="{{invalid}}" style="min-height: 96px; box-sizing: border-box; width: 100%; resize: none; border: 1px solid {{fieldBorder}}; border-radius: 14px; background: #f2f3f7; padding: 12px 16px; font-family: Onest, system-ui, sans-serif; font-size: 16px; line-height: 1.5; color: #1d2023; outline: none"></textarea>
+          <sc-if value="{{hasError}}" hint-placeholder-val="{{ false }}">
+            <p role="alert" style="margin: 0; font-size: 14px; color: #d6002a">{{error}}</p>
+          </sc-if>
+        </div>
+        <div style="display: flex; flex-direction: column-reverse; gap: 8px">
+          <button type="button" onClick="{{cancel}}" style="height: 44px; padding: 0 20px; border: 1px solid #e2e7f7; border-radius: 16px; background: #ffffff; color: #1d2023; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">Отмена</button>
+          <button type="button" onClick="{{save}}" disabled="{{saving}}" style="height: 44px; padding: 0 20px; border: 0; border-radius: 16px; background: #ff0032; color: #ffffff; font-family: Unbounded, system-ui, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; cursor: pointer">{{saveLabel}}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // This artboard shows the moment right after "Уже" was pressed for Мария Кузнецова
+    this.state = { expanded: false, done: [], noteFor: 1, text: 'Связался', error: '', saving: false };
+  }
+  componentWillUnmount() {
+    clearTimeout(this.timer);
+  }
+  renderVals() {
+    const all = [
+      { id: 1, initials: 'МК', name: 'Мария Кузнецова', freq: 'Раз в год', overdue: 'просрочено на 64 дня' },
+      { id: 2, initials: 'ИП', name: 'Иван Петров', freq: 'Раз в неделю', overdue: 'просрочено на 40 дней' },
+      { id: 3, initials: 'ОЛ', name: 'Ольга Лебедева', freq: 'Раз в квартал', overdue: 'просрочено на 21 день' },
+      { id: 4, initials: 'ПС', name: 'Пётр Соколов', freq: 'Раз в месяц', overdue: 'просрочено на 15 дней' },
+      { id: 5, initials: 'ВО', name: 'Вера Орлова', freq: 'Раз в месяц', overdue: 'просрочено на 9 дней' },
+      { id: 6, initials: 'ДВ', name: 'Дмитрий Волков', freq: 'Раз в неделю', overdue: 'просрочено на 7 дней' },
+      { id: 7, initials: 'ЕМ', name: 'Екатерина Морозова', freq: 'Раз в квартал', overdue: 'просрочено на 5 дней' },
+      { id: 8, initials: 'СН', name: 'Сергей Никитин', freq: 'Раз в месяц', overdue: 'просрочено на 4 дня' },
+      { id: 9, initials: 'АЗ', name: 'Алина Захарова', freq: 'Раз в год', overdue: 'просрочено на 3 дня' },
+      { id: 10, initials: 'ГТ', name: 'Глеб Тарасов', freq: 'Раз в неделю', overdue: 'просрочено на 2 дня' },
+      { id: 11, initials: 'КБ', name: 'Ксения Белова', freq: 'Раз в месяц', overdue: 'просрочено на 1 день' },
+      { id: 12, initials: 'РИ', name: 'Роман Ильин', freq: 'Раз в неделю', overdue: 'срок подошёл' }
+    ];
+    const s = this.state;
+    const cancel = () => {
+      if (!this.state.saving) this.setState({ noteFor: null, error: '' });
+    };
+    const save = () => {
+      if (this.state.saving) return;
+      if (!this.state.text.trim()) {
+        this.setState({ error: 'Заметка пустая' });
+        return;
+      }
+      const id = this.state.noteFor;
+      this.setState({ saving: true });
+      this.timer = setTimeout(() => {
+        this.setState((prev) => ({ saving: false, noteFor: null, done: prev.done.concat(id) }));
+      }, 700);
+    };
+    const left = all.filter((row) => s.done.indexOf(row.id) === -1).map((row) => ({
+      ...row,
+      label: 'Уже связался: ' + row.name,
+      open: () => this.setState({ noteFor: row.id, text: 'Связался', error: '', saving: false })
+    }));
+    const noteRow = all.find((row) => row.id === s.noteFor) || null;
+    const expanded = !!s.expanded;
+    return {
+      showBlock: left.length > 0,
+      rows: expanded ? left : left.slice(0, 5),
+      total: left.length,
+      hasMore: left.length > 5,
+      toggleLabel: expanded ? 'Свернуть' : 'Показать всех (' + left.length + ')',
+      toggle: () => this.setState({ expanded: !expanded }),
+      noteOpen: !!noteRow,
+      noteName: noteRow ? noteRow.name : '',
+      text: s.text,
+      onText: (event) => this.setState({ text: event.target.value, error: '' }),
+      onKey: (event) => {
+        if (event.key === 'Escape') cancel();
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          save();
+        }
+      },
+      cancel,
+      save,
+      saving: s.saving,
+      saveLabel: s.saving ? 'Сохраняю…' : 'Сохранить',
+      hasError: !!s.error,
+      error: s.error,
+      invalid: !!s.error,
+      fieldBorder: s.error ? '#d6002a' : 'transparent',
+      contacts: [
+        { initials: 'АЗ', name: 'Алексей Зайцев', about: 'Фотограф, снимал нашу свадьбу' },
+        { initials: 'АЗ', name: 'Алина Захарова', about: 'Однокурсница, вместе учились в МГУ' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
