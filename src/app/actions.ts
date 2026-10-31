@@ -153,7 +153,9 @@ export async function setTouchIntervalAction(
   formData: FormData,
 ): Promise<TouchIntervalFormState> {
   const id = contactIdSchema.parse(contactId);
-  const parsed = touchIntervalFormSchema.safeParse(formData.get("touchInterval"));
+  const parsed = touchIntervalFormSchema.safeParse(
+    formData.get("touchInterval"),
+  );
   if (!parsed.success) {
     return { error: "Выберите один из вариантов" };
   }

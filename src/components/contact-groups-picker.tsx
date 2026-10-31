@@ -54,7 +54,10 @@ export function ContactGroupsPicker({
   }
 
   return (
-    <section aria-labelledby="groups-heading" className="flex flex-col gap-3 sm:gap-3.5">
+    <section
+      aria-labelledby="groups-heading"
+      className="flex flex-col gap-3 sm:gap-3.5"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2
           id="groups-heading"
@@ -75,7 +78,11 @@ export function ContactGroupsPicker({
       {groups.length === 0 ? (
         <p className="text-muted-foreground">Групп пока нет</p>
       ) : null}
-      <div role="group" aria-labelledby="groups-heading" className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-labelledby="groups-heading"
+        className="flex flex-wrap gap-2"
+      >
         {groups.map((group) => (
           <label
             key={group.id}

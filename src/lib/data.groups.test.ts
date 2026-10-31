@@ -326,7 +326,10 @@ describe("Блок «Пора связаться» учитывает выбра
     const family = await createGroup("Семья");
     // 12 are due, 7 of them in the family; the later the name, the less overdue
     for (let index = 0; index < 12; index += 1) {
-      const id = await overdue(`Контакт ${String(index + 1).padStart(2, "0")}`, 60 - index);
+      const id = await overdue(
+        `Контакт ${String(index + 1).padStart(2, "0")}`,
+        60 - index,
+      );
       if (index < 7) {
         await addToGroup(id, family);
       }
@@ -335,7 +338,10 @@ describe("Блок «Пора связаться» учитывает выбра
     const inFamily = await listDueContacts(family);
     expect(inFamily).toHaveLength(7);
     expect(inFamily.map((contact) => contact.name)).toEqual(
-      Array.from({ length: 7 }, (_, index) => `Контакт ${String(index + 1).padStart(2, "0")}`),
+      Array.from(
+        { length: 7 },
+        (_, index) => `Контакт ${String(index + 1).padStart(2, "0")}`,
+      ),
     );
     expect(await listDueContacts(null)).toHaveLength(12);
   });

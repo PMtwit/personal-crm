@@ -135,6 +135,33 @@ pnpm test
 
 Нужен запущенный Postgres в Docker (`docker compose up -d --wait`). Тесты работают в отдельной базе `personal_crm_unit_test`: она создаётся сама при первом запуске, а перед каждым тестом очищается. Ваши контакты и база `personal_crm_test` для e2e не затрагиваются.
 
+### Линтер, формат и типы
+
+```
+pnpm lint            # ошибки в коде (ESLint)
+pnpm format          # выровнять оформление кода (Prettier): отступы, кавычки, переносы
+pnpm format:check    # только проверить оформление, ничего не меняя
+pnpm typecheck       # проверка типов TypeScript
+```
+
+Prettier не трогает тексты и спеки: `*.md`, `openspec/`, `specs/`, `landing-text/`. Список исключений — в `.prettierignore`.
+
+## Проверки на GitHub (CI)
+
+На каждый PR GitHub Actions запускает workflow «CI» (`.github/workflows/ci.yml`):
+
+- «Lint, format, types» — `pnpm lint`, `pnpm format:check`, `pnpm typecheck`
+- «Unit tests (Vitest)» — `pnpm test`
+- «E2E tests (Playwright)» — `pnpm test:e2e`
+- «Docker image build» — собирает образ приложения, но никуда его не отправляет
+- «CI passed» — зелёная, только если зелёные все проверки выше
+
+Базу для тестов CI поднимает сам: временный Postgres в Docker, который живёт только во время проверки. Если e2e упали, записи упавших тестов лежат на странице проверки в разделе Artifacts (`playwright-traces`).
+
+В `main` нельзя запушить напрямую: изменения попадают туда только через PR, и только когда «CI passed» зелёная. Правило действует и для владельца репозитория. Где посмотреть: Settings → Rules → Rulesets → «Protect main».
+
+У PR включается автовлитие: PR вливается сам, как только CI позеленеет, и сразу запускается выкатка. Если CI красная, PR остаётся открытым: надо исправить причину и запушить в ту же ветку.
+
 ### Если что-то пошло не так
 
 - На странице «Не получилось загрузить данные» — не запущена база. Откройте Docker Desktop и выполните `docker compose up -d --wait`

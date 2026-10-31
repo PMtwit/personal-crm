@@ -21,8 +21,7 @@ export default function ErrorPage({
         Не получилось загрузить данные
       </h1>
       <p className="max-w-lg text-pretty text-muted-foreground sm:text-lg">
-        Скорее всего, это временный сбой. Подождите минуту и попробуйте
-        ещё раз.
+        Скорее всего, это временный сбой. Подождите минуту и попробуйте ещё раз.
       </p>
       <Button size="lg" className="mt-2" onClick={() => retry()}>
         Попробовать ещё раз

@@ -4,12 +4,17 @@ type PluralForms = { one: string; few: string; many: string };
 
 export function pluralize(count: number, forms: PluralForms): string {
   const rule = pluralRules.select(count);
-  const word = rule === "one" ? forms.one : rule === "few" ? forms.few : forms.many;
+  const word =
+    rule === "one" ? forms.one : rule === "few" ? forms.few : forms.many;
   return `${count.toLocaleString("ru-RU")} ${word}`;
 }
 
 export function contactsCount(count: number): string {
-  return pluralize(count, { one: "контакт", few: "контакта", many: "контактов" });
+  return pluralize(count, {
+    one: "контакт",
+    few: "контакта",
+    many: "контактов",
+  });
 }
 
 export function notesCount(count: number): string {

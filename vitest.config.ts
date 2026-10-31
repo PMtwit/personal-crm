@@ -4,7 +4,8 @@ import { defineConfig } from "vitest/config";
 
 import { testDatabaseUrl } from "./e2e/test-database";
 
-const fromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+const fromRoot = (path: string) =>
+  fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
   resolve: {

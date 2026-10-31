@@ -5,7 +5,9 @@ import { defineConfig } from "drizzle-kit";
 loadEnvConfig(process.cwd());
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
+  throw new Error(
+    "DATABASE_URL is not set. Copy .env.example to .env and fill it in.",
+  );
 }
 
 export default defineConfig({

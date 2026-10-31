@@ -134,7 +134,9 @@ test("переименовал «Дача» в «Дача в Лесном» → 
   ]);
   await groupFilter(page).getByRole("link", { name: "Дача в Лесном" }).click();
   await expect(page).toHaveURL(/\?group=\d+$/);
-  await expect(page.getByText("В группе «Дача в Лесном» 2 контакта")).toBeVisible();
+  await expect(
+    page.getByText("В группе «Дача в Лесном» 2 контакта"),
+  ).toBeVisible();
   await expect(contactList(page).getByRole("link")).toHaveCount(2);
   await expect(
     contactList(page).getByRole("link", { name: fullName("Анна") }),
@@ -202,7 +204,9 @@ test("удалил «Дачу» → её нет на странице «Груп
   ).toBeVisible();
   await expectCardGroups(page, [["Семья", true]]);
   await expect(notes.getByText(ANNA_NOTE)).toBeVisible();
-  await expect(interval.getByRole("radio", { name: "Раз в месяц" })).toBeChecked();
+  await expect(
+    interval.getByRole("radio", { name: "Раз в месяц" }),
+  ).toBeChecked();
 
   await page.goto(`/contacts/${boris}`);
   await expect(
@@ -210,5 +214,7 @@ test("удалил «Дачу» → её нет на странице «Груп
   ).toBeVisible();
   await expectCardGroups(page, [["Семья", false]]);
   await expect(notes.getByText(BORIS_NOTE)).toBeVisible();
-  await expect(interval.getByRole("radio", { name: "Не задано" })).toBeChecked();
+  await expect(
+    interval.getByRole("radio", { name: "Не задано" }),
+  ).toBeChecked();
 });

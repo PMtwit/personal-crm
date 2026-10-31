@@ -39,9 +39,11 @@ export async function createContactWithInterval(
     })
     .returning({ id: contacts.id });
   for (const days of options.noteDaysAgo ?? []) {
-    await db
-      .insert(notes)
-      .values({ contactId: row.id, body: "Старая заметка", createdAt: daysAgo(days) });
+    await db.insert(notes).values({
+      contactId: row.id,
+      body: "Старая заметка",
+      createdAt: daysAgo(days),
+    });
   }
   return row.id;
 }
