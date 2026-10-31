@@ -4,22 +4,32 @@ import Link from "next/link";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { countContacts, listContacts, type ContactListItem } from "@/lib/data";
-import { contactsCount, groupLetter } from "@/lib/format";
+import {
+  countContacts,
+  listContacts,
+  listGroups,
+  type ContactListItem,
+} from "@/lib/data";
+import { groupLetter } from "@/lib/format";
+import { listCaption, resolveSelectedGroup } from "@/lib/groups";
 
 export async function ContactList({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q } = await searchParams;
+  const { q, group: groupParam } = await searchParams;
   const query = (Array.isArray(q) ? q[0] : q)?.trim() ?? "";
-  const [items, total] = await Promise.all([
-    listContacts(query),
-    countContacts(),
+  const group = resolveSelectedGroup(groupParam, await listGroups());
+  const groupId = group?.id ?? null;
+  // `total` is in the group (or in all, with no group); `allTotal` is in all
+  const [items, total, allTotal] = await Promise.all([
+    listContacts(query, groupId),
+    countContacts(groupId),
+    group ? countContacts() : null,
   ]);
 
-  if (total === 0) {
+  if ((allTotal ?? total) === 0) {
     return (
       <div className="flex flex-col items-center gap-5 rounded-block bg-linear-160/srgb from-hero-from to-hero-to px-5 py-14 text-center sm:rounded-block-lg sm:py-16">
         <p className="text-lg text-muted-foreground">
@@ -33,25 +43,32 @@ export async function ContactList({
     );
   }
 
+  const { caption, empty } = listCaption({
+    query,
+    group,
+    shown: items.length,
+    total,
+  });
+
   return (
     <section aria-label="Список контактов" className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground" aria-live="polite">
-        {query
-          ? `Найдено: ${items.length.toLocaleString("ru-RU")} из ${total.toLocaleString("ru-RU")}`
-          : `Всего ${contactsCount(total)}`}
-      </p>
-      {items.length === 0 ? (
+      {caption ? (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {caption}
+        </p>
+      ) : null}
+      {empty ? (
         <p className="rounded-card bg-muted px-6 py-12 text-center text-muted-foreground sm:rounded-card-lg">
-          Никого не нашлось по запросу «{query}»
+          {empty}
         </p>
       ) : (
-        groupByLetter(items).map(([letter, group]) => (
+        groupByLetter(items).map(([letter, letterContacts]) => (
           <div key={letter}>
             <h2 className="mb-1 px-3 font-display text-sm font-bold text-primary">
               {letter}
             </h2>
             <ul className="flex flex-col gap-0.5">
-              {group.map((contact) => (
+              {letterContacts.map((contact) => (
                 <li key={contact.id}>
                   <ContactRow contact={contact} />
                 </li>

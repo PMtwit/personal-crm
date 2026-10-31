@@ -6,12 +6,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Input } from "@/components/ui/input";
+import { homeHref } from "@/lib/groups";
+import { parseId } from "@/lib/validation";
 
 const DEBOUNCE_MS = 250;
 
 export function SearchBox() {
   const router = useRouter();
-  const urlQuery = useSearchParams().get("q") ?? "";
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
+  // The chosen group stays in the address while searching
+  const urlGroup = parseId(searchParams.get("group") ?? "");
+  // The timer below was set earlier, when the group could have been another one:
+  // it reads the latest group from here
+  const groupRef = useRef(urlGroup);
+  useEffect(() => {
+    groupRef.current = urlGroup;
+  }, [urlGroup]);
   const [value, setValue] = useState(urlQuery);
   // Query typed by the user that the URL has not caught up with yet
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
@@ -35,7 +46,7 @@ export function SearchBox() {
 
   function search(query: string) {
     startTransition(() => {
-      router.replace(query ? `/?q=${encodeURIComponent(query)}` : "/", {
+      router.replace(homeHref({ q: query, group: groupRef.current }), {
         scroll: false,
       });
     });
@@ -56,6 +67,10 @@ export function SearchBox() {
         aria-hidden
         className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-subtle"
       />
+      {/* Without JavaScript the form submits as a plain GET: the group goes along too */}
+      {urlGroup !== null ? (
+        <input type="hidden" name="group" value={urlGroup} />
+      ) : null}
       <Input
         type="search"
         name="q"

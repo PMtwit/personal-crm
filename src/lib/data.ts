@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
-import { contacts, notes } from "@/db/schema";
+import { contactGroups, contacts, groups, notes } from "@/db/schema";
 import type { TouchInterval } from "@/lib/keep-in-touch";
 import { escapeLike, searchTerms } from "@/lib/search";
 import type { ContactInput } from "@/lib/validation";
@@ -22,11 +22,24 @@ export type ContactListItem = Pick<
   "id" | "name" | "about" | "phone" | "email"
 >;
 
-export async function listContacts(query: string): Promise<ContactListItem[]> {
+// The contact is in the group. exists, not a join: a contact in a group
+// is one row of the list, whatever the number of its groups
+function inGroup(groupId: number): SQL {
+  return sql`exists (select 1 from ${contactGroups} where ${contactGroups.contactId} = ${contacts.id} and ${contactGroups.groupId} = ${groupId})`;
+}
+
+// With a group, only its contacts; null means all contacts
+export async function listContacts(
+  query: string,
+  groupId: number | null = null,
+): Promise<ContactListItem[]> {
   const normalizedName = sql`replace(lower(${contacts.name}), 'ё', 'е')`;
   const conditions = searchTerms(query).map(
     (term) => sql`${normalizedName} like ${`%${escapeLike(term)}%`}`,
   );
+  if (groupId !== null) {
+    conditions.push(inGroup(groupId));
+  }
 
   return db
     .select({
@@ -43,8 +56,12 @@ export async function listContacts(query: string): Promise<ContactListItem[]> {
     .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
 }
 
-export async function countContacts(): Promise<number> {
-  const [row] = await db.select({ total: count() }).from(contacts);
+// With a group, only the contacts in it; null means all contacts
+export async function countContacts(groupId: number | null = null): Promise<number> {
+  const [row] = await db
+    .select({ total: count() })
+    .from(contacts)
+    .where(groupId === null ? undefined : inGroup(groupId));
   return row.total;
 }
 
@@ -189,8 +206,11 @@ export type DueContact = {
 };
 
 // Contacts whose due date has come, the most overdue (the earliest due date)
-// first; contacts with the same due date go by name, as in the list
-export async function listDueContacts(): Promise<DueContact[]> {
+// first; contacts with the same due date go by name, as in the list.
+// With a group, only the contacts in it; null means all contacts
+export async function listDueContacts(
+  groupId: number | null = null,
+): Promise<DueContact[]> {
   // The last note of each contact: one row per contact, even with no notes
   const lastNote = db
     .select({
@@ -211,7 +231,13 @@ export async function listDueContacts(): Promise<DueContact[]> {
     })
     .from(contacts)
     .leftJoinLateral(lastNote, sql`true`)
-    .where(and(isNotNull(contacts.touchInterval), sql`${dueAt} <= now()`))
+    .where(
+      and(
+        isNotNull(contacts.touchInterval),
+        sql`${dueAt} <= now()`,
+        groupId === null ? undefined : inGroup(groupId),
+      ),
+    )
     .orderBy(asc(dueAt), sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
 
   // The condition above guarantees an interval and a due date
@@ -220,4 +246,169 @@ export async function listDueContacts(): Promise<DueContact[]> {
       ? [{ ...row, touchInterval: row.touchInterval, dueAt: row.dueAt }]
       : [],
   );
+}
+
+export type GroupListItem = {
+  id: number;
+  name: string;
+  contactCount: number;
+};
+
+// All groups by name, in Russian alphabetical order, with the number of contacts
+export async function listGroups(): Promise<GroupListItem[]> {
+  return db
+    .select({
+      id: groups.id,
+      name: groups.name,
+      contactCount: count(contactGroups.contactId),
+    })
+    .from(groups)
+    .leftJoin(contactGroups, eq(contactGroups.groupId, groups.id))
+    .groupBy(groups.id)
+    .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
+}
+
+// Ids of the groups the contact is in
+export async function listContactGroupIds(contactId: number): Promise<number[]> {
+  const rows = await db
+    .select({ groupId: contactGroups.groupId })
+    .from(contactGroups)
+    .where(eq(contactGroups.contactId, contactId));
+  return rows.map((row) => row.groupId);
+}
+
+export type SetContactGroupResult = "ok" | "contact-not-found" | "group-not-found";
+
+// Puts the contact into the group or takes it out. Doing it again is harmless.
+// Only this one group changes, so two tabs with different groups of one contact
+// do not overwrite each other
+export async function setContactGroup(
+  contactId: number,
+  groupId: number,
+  member: boolean,
+): Promise<SetContactGroupResult> {
+  return db.transaction(async (tx) => {
+    // "key share" holds the rows until the end: a contact or a group deleted
+    // in another tab cannot disappear between the check and the insert
+    const [contact] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(eq(contacts.id, contactId))
+      .for("key share");
+    if (!contact) {
+      return "contact-not-found";
+    }
+    const [group] = await tx
+      .select({ id: groups.id })
+      .from(groups)
+      .where(eq(groups.id, groupId))
+      .for("key share");
+    if (!group) {
+      return "group-not-found";
+    }
+
+    if (member) {
+      await tx
+        .insert(contactGroups)
+        .values({ contactId, groupId })
+        .onConflictDoNothing();
+    } else {
+      await tx
+        .delete(contactGroups)
+        .where(
+          and(
+            eq(contactGroups.contactId, contactId),
+            eq(contactGroups.groupId, groupId),
+          ),
+        );
+    }
+    await tx
+      .update(contacts)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(contacts.id, contactId));
+    return "ok";
+  });
+}
+
+// Creates a group and puts the contact into it. If a group with this name
+// (any letter case) already exists, no new one is made: the contact goes into
+// the existing one. Returns the group's id, or null if there is no such contact
+// (deleted in another tab): then no group is created either.
+// Two requests at the same moment give one group: the second waits for the
+// first on the unique index, then finds its group
+export async function createGroupForContact(
+  contactId: number,
+  name: string,
+): Promise<number | null> {
+  return db.transaction(async (tx) => {
+    const [contact] = await tx
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(eq(contacts.id, contactId))
+      .for("key share");
+    if (!contact) {
+      return null;
+    }
+
+    await tx.insert(groups).values({ name }).onConflictDoNothing();
+    const [group] = await tx
+      .select({ id: groups.id })
+      .from(groups)
+      .where(sql`lower(${groups.name}) = lower(${name})`)
+      .for("key share");
+
+    await tx
+      .insert(contactGroups)
+      .values({ contactId, groupId: group.id })
+      .onConflictDoNothing();
+    await tx
+      .update(contacts)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(contacts.id, contactId));
+    return group.id;
+  });
+}
+
+export type RenameGroupResult = "ok" | "duplicate" | "not-found";
+
+// PostgreSQL's code for "a unique index would be broken". Drizzle wraps the
+// driver's error, so the code can be in the error or in its cause
+const UNIQUE_VIOLATION = "23505";
+
+function isUniqueViolation(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  const causeCode = (error as { cause?: { code?: string } })?.cause?.code;
+  return code === UNIQUE_VIOLATION || causeCode === UNIQUE_VIOLATION;
+}
+
+// Another group already has this name (in any letter case): "duplicate".
+// The group's own name does not count: changing only the letter case works.
+// No such group (deleted in another tab): "not-found"
+export async function renameGroup(
+  id: number,
+  name: string,
+): Promise<RenameGroupResult> {
+  try {
+    const updated = await db
+      .update(groups)
+      .set({ name })
+      .where(eq(groups.id, id))
+      .returning({ id: groups.id });
+    return updated.length > 0 ? "ok" : "not-found";
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return "duplicate";
+    }
+    throw error;
+  }
+}
+
+// The group goes, the contacts stay: the database drops only the rows of
+// "who is in the group". false if there was no such group already
+export async function deleteGroup(id: number): Promise<boolean> {
+  const deleted = await db
+    .delete(groups)
+    .where(eq(groups.id, id))
+    .returning({ id: groups.id });
+  return deleted.length > 0;
 }

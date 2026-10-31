@@ -15,6 +15,13 @@
       "when": 1793456662412,
       "tag": "0001_touch_interval",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793463412795,
+      "tag": "0002_groups",
+      "breakpoints": true
     }
   ]
 }
