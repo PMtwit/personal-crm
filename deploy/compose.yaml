@@ -20,6 +20,9 @@ services:
   db:
     image: postgres:18
     restart: unless-stopped
+    # Postgres quotes a refused row in its log ("Failing row contains ..."):
+    # terse leaves that detail out, so people's data stays out of the log
+    command: ["postgres", "-c", "log_error_verbosity=terse"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
