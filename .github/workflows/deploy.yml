@@ -60,11 +60,13 @@ jobs:
           # The server's host key: SSH refuses to talk to any other machine
           echo "217.180.0.147 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvufsWQh68fUmn7JyKKdConhhK4KLAK0Mzh9fXajgi2" > ~/.ssh/known_hosts
 
+      # Everything in deploy/, so a new script arrives by itself. A glob, not the
+      # folder itself: the folder on the server keeps its own permissions
       - name: Copy deploy scripts
-        run: scp -p deploy/compose.yaml deploy/deploy.sh "$SERVER:$APP_DIR/"
+        run: scp -rp deploy/* "$SERVER:$APP_DIR/"
 
-      # Migrations, the new app, smoke check of /health. The registry token
-      # goes on stdin and only lives until this job ends
+      # Backup, migrations, the new app, smoke check of /health. The registry
+      # token goes on stdin and only lives until this job ends
       - name: Deploy
         env:
           TAG: ${{ github.sha }}
