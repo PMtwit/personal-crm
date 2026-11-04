@@ -3,13 +3,22 @@ import { Client } from "pg";
 
 import { testDatabaseUrl } from "./test-database";
 
-// The "Groups" page: renaming and deleting a group.
+// Groups: the pills in the contact card, a new group from the card, and renaming
+// and deleting on the "Groups" page.
 // Every test creates its own contacts (named with PREFIX) and groups by SQL
 // and deletes them afterwards: the other spec files run later, expect no
 // groups and count all contacts.
 
 const PREFIX = "Автотест групп";
-const TEST_GROUPS = ["Дача", "Дача в Лесном", "Семья"];
+const TOO_LONG_NAME = "Д".repeat(51);
+const TEST_GROUPS = [
+  "Дача",
+  "Дача в Лесном",
+  "Друзья",
+  "Семья",
+  "Черновик",
+  TOO_LONG_NAME,
+];
 const ANNA_NOTE = "Договорились вместе поехать на дачу в субботу";
 const BORIS_NOTE = "Обещал привезти рассаду";
 
@@ -96,10 +105,405 @@ async function expectCardGroups(
   }
 }
 
+async function createContact(label: string): Promise<number> {
+  const [row] = await query<{ id: number }>(
+    "insert into contacts (name) values ($1) returning id",
+    [fullName(label)],
+  );
+  return row.id;
+}
+
+async function createGroup(name: string): Promise<number> {
+  const [row] = await query<{ id: number }>(
+    "insert into groups (name) values ($1) returning id",
+    [name],
+  );
+  return row.id;
+}
+
+async function addToGroup(contactId: number, groupId: number) {
+  await query(
+    "insert into contact_groups (contact_id, group_id) values ($1, $2)",
+    [contactId, groupId],
+  );
+}
+
+// The contact's groups as saved in the database. A pill changes before the
+// server answers, so its look proves nothing: only this shows that it was saved
+async function savedGroups(contactId: number): Promise<string[]> {
+  const rows = await query<{ name: string }>(
+    `select g.name from contact_groups cg
+     join groups g on g.id = cg.group_id
+     where cg.contact_id = $1
+     order by g.name collate "ru-x-icu"`,
+    [contactId],
+  );
+  return rows.map((row) => row.name);
+}
+
+async function allGroups(): Promise<string[]> {
+  const rows = await query<{ name: string }>(
+    `select name from groups order by name collate "ru-x-icu"`,
+  );
+  return rows.map((row) => row.name);
+}
+
+function cardPills(page: Page) {
+  return page.getByRole("group", { name: "Группы", exact: true });
+}
+
+// The pill is a label around a visually hidden checkbox: click what the user sees
+async function clickPill(page: Page, name: string) {
+  await cardPills(page).getByText(name, { exact: true }).click();
+}
+
+// The list on the home page has this one contact and nobody else
+async function expectOnlyInList(page: Page, label: string) {
+  await expect(contactList(page).getByRole("link")).toHaveCount(1);
+  await expect(
+    contactList(page).getByRole("link", { name: fullName(label) }),
+  ).toBeVisible();
+}
+
+async function openNewGroupDialog(page: Page) {
+  await page.getByRole("button", { name: "Новая группа" }).click();
+  const dialog = page.getByRole("dialog", { name: "Новая группа" });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
 test.afterEach(async () => {
   await query("delete from contacts where name like $1", [`${PREFIX}%`]);
   await query("delete from groups where name = any($1)", [TEST_GROUPS]);
 });
+
+// ---------------------------------------------------------------------------
+// A click on a group pill in the contact card
+// ---------------------------------------------------------------------------
+
+test("нажал «Семья» в карточке → выделена, сохранилось без кнопки и перехода", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await createGroup("Дача");
+  await createGroup("Семья");
+  await page.goto(`/contacts/${anna}`);
+  const cardUrl = page.url();
+  await expectCardGroups(page, [
+    ["Дача", false],
+    ["Семья", false],
+  ]);
+
+  await clickPill(page, "Семья");
+
+  await expect.poll(() => savedGroups(anna)).toEqual(["Семья"]);
+  await expect(page).toHaveURL(cardUrl);
+  await expect(page.getByRole("button", { name: "Сохранить" })).toHaveCount(0);
+  await expectCardGroups(page, [
+    ["Дача", false],
+    ["Семья", true],
+  ]);
+
+  await page.reload();
+  await expectCardGroups(page, [
+    ["Дача", false],
+    ["Семья", true],
+  ]);
+});
+
+test("нажал «Друзья», потом «Дача» → выделены обе, контакт виден при каждом фильтре", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await createGroup("Дача");
+  await createGroup("Друзья");
+  await createGroup("Семья");
+  await page.goto(`/contacts/${anna}`);
+
+  // One right after the other, without waiting for the first to be saved
+  await clickPill(page, "Друзья");
+  await clickPill(page, "Дача");
+
+  await expect.poll(() => savedGroups(anna)).toEqual(["Дача", "Друзья"]);
+  await page.reload();
+  await expectCardGroups(page, [
+    ["Дача", true],
+    ["Друзья", true],
+    ["Семья", false],
+  ]);
+
+  await page.goto("/");
+  for (const name of ["Друзья", "Дача"]) {
+    await groupFilter(page).getByRole("link", { name, exact: true }).click();
+    await expect(page.getByText(`В группе «${name}» 1 контакт`)).toBeVisible();
+    await expectOnlyInList(page, "Анна");
+  }
+});
+
+test("нажал выделенную «Семья» → контакт вышел из неё, из других групп не вышел", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  const boris = await createContact("Борис");
+  const dacha = await createGroup("Дача");
+  const family = await createGroup("Семья");
+  await addToGroup(anna, dacha);
+  await addToGroup(anna, family);
+  await addToGroup(boris, family);
+  await page.goto(`/contacts/${anna}`);
+  await expectCardGroups(page, [
+    ["Дача", true],
+    ["Семья", true],
+  ]);
+
+  await clickPill(page, "Семья");
+
+  await expect.poll(() => savedGroups(anna)).toEqual(["Дача"]);
+  await page.reload();
+  await expectCardGroups(page, [
+    ["Дача", true],
+    ["Семья", false],
+  ]);
+
+  // Anna is out of the filter's list, Boris stays
+  await page.goto("/");
+  await groupFilter(page).getByRole("link", { name: "Семья" }).click();
+  await expect(page.getByText("В группе «Семья» 1 контакт")).toBeVisible();
+  await expectOnlyInList(page, "Борис");
+});
+
+test("отметил «Друзья» → тот же выбор виден в другом браузере", async ({
+  page,
+  browser,
+}) => {
+  const anna = await createContact("Анна");
+  await createGroup("Друзья");
+  await page.goto(`/contacts/${anna}`);
+
+  await clickPill(page, "Друзья");
+  await expect.poll(() => savedGroups(anna)).toEqual(["Друзья"]);
+
+  // A separate browser context shares no cookies or storage with the first one
+  const otherBrowser = await browser.newContext();
+  const otherPage = await otherBrowser.newPage();
+  await otherPage.goto(`/contacts/${anna}`);
+  await expectCardGroups(otherPage, [["Друзья", true]]);
+  await otherBrowser.close();
+});
+
+test("контакт удалён в другой вкладке, нажал таблетку → «Контакт не найден», ничего не сохранено", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await createGroup("Семья");
+  await page.goto(`/contacts/${anna}`);
+  await expectCardGroups(page, [["Семья", false]]);
+
+  // Another tab deletes the contact
+  await query("delete from contacts where id = $1", [anna]);
+
+  await clickPill(page, "Семья");
+
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Контакт не найден" }),
+  ).toBeVisible();
+  // The pill shows what is really saved: nothing
+  await expectCardGroups(page, [["Семья", false]]);
+  expect(await savedGroups(anna)).toEqual([]);
+});
+
+test("группа удалена в другой вкладке, нажал её таблетку → «Группа не найдена», таблетки больше нет", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await createGroup("Дача");
+  const family = await createGroup("Семья");
+  await page.goto(`/contacts/${anna}`);
+  await expectCardGroups(page, [
+    ["Дача", false],
+    ["Семья", false],
+  ]);
+
+  // Another tab deletes the group
+  await query("delete from groups where id = $1", [family]);
+
+  await clickPill(page, "Семья");
+
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Группа не найдена" }),
+  ).toBeVisible();
+  await expectCardGroups(page, [["Дача", false]]);
+  expect(await savedGroups(anna)).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// A new group from the contact card
+// ---------------------------------------------------------------------------
+
+test("групп ещё нет → в карточке «Групп пока нет» и кнопка «Новая группа»", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await page.goto(`/contacts/${anna}`);
+
+  await expect(page.getByText("Групп пока нет")).toBeVisible();
+  await expect(cardPills(page).getByRole("checkbox")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Новая группа" }),
+  ).toBeVisible();
+});
+
+test("создал «Дачу» → окно закрылось, таблетка выделена, у других контактов не выделена, в фильтре есть", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  const boris = await createContact("Борис");
+  await page.goto(`/contacts/${anna}`);
+
+  const dialog = await openNewGroupDialog(page);
+  await expect(
+    dialog.getByText(`${fullName("Анна")} сразу войдёт в неё.`),
+  ).toBeVisible();
+  await dialog.getByLabel("Название").fill("Дача");
+  await dialog.getByRole("button", { name: "Создать" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expectCardGroups(page, [["Дача", true]]);
+  await expect(page.getByText("Групп пока нет")).toHaveCount(0);
+  expect(await savedGroups(anna)).toEqual(["Дача"]);
+
+  await page.reload();
+  await expectCardGroups(page, [["Дача", true]]);
+
+  await page.goto(`/contacts/${boris}`);
+  await expectCardGroups(page, [["Дача", false]]);
+
+  await page.goto("/");
+  await groupFilter(page).getByRole("link", { name: "Дача" }).click();
+  await expect(page.getByText("В группе «Дача» 1 контакт")).toBeVisible();
+  await expectOnlyInList(page, "Анна");
+});
+
+test("ввёл название и закрыл окно: «Отмена», Esc, мимо окна → группа не создана", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await page.goto(`/contacts/${anna}`);
+
+  let dialog = await openNewGroupDialog(page);
+  await dialog.getByLabel("Название").fill("Черновик");
+  await dialog.getByRole("button", { name: "Отмена" }).click();
+  await expect(dialog).toBeHidden();
+
+  // Every time the dialog opens, the field is empty
+  dialog = await openNewGroupDialog(page);
+  await expect(dialog.getByLabel("Название")).toHaveValue("");
+  await dialog.getByLabel("Название").fill("Черновик");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+
+  dialog = await openNewGroupDialog(page);
+  await dialog.getByLabel("Название").fill("Черновик");
+  await page.mouse.click(5, 5);
+  await expect(dialog).toBeHidden();
+
+  expect(await allGroups()).toEqual([]);
+  expect(await savedGroups(anna)).toEqual([]);
+  await expect(page.getByText("Групп пока нет")).toBeVisible();
+});
+
+test("двойное нажатие «Создать» → одна группа, контакт в ней один раз", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await page.goto(`/contacts/${anna}`);
+
+  const dialog = await openNewGroupDialog(page);
+  await dialog.getByLabel("Название").fill("Дача");
+  await dialog.getByRole("button", { name: "Создать" }).dblclick({ delay: 0 });
+
+  await expect(dialog).toBeHidden();
+  await expectCardGroups(page, [["Дача", true]]);
+  expect(await allGroups()).toEqual(["Дача"]);
+  expect(await savedGroups(anna)).toEqual(["Дача"]);
+});
+
+test("создал группу с занятым названием «семья» → новой нет, контакт в существующей «Семье»", async ({
+  page,
+}) => {
+  const boris = await createContact("Борис");
+  await createGroup("Семья");
+  await page.goto(`/contacts/${boris}`);
+  await expectCardGroups(page, [["Семья", false]]);
+
+  const dialog = await openNewGroupDialog(page);
+  await dialog.getByLabel("Название").fill("семья");
+  await dialog.getByRole("button", { name: "Создать" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expectCardGroups(page, [["Семья", true]]);
+  expect(await allGroups()).toEqual(["Семья"]);
+  expect(await savedGroups(boris)).toEqual(["Семья"]);
+});
+
+test("пустое и слишком длинное название → ошибка под полем, окно открыто; исправил → создана без пробелов по краям", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await page.goto(`/contacts/${anna}`);
+  const dialog = await openNewGroupDialog(page);
+  const field = dialog.getByLabel("Название");
+  const create = dialog.getByRole("button", { name: "Создать" });
+
+  const emptyError = dialog.getByText("Укажите название");
+  const longError = dialog.getByText("Слишком длинно: не больше 50 символов");
+
+  // The expected message changes at every step, so the previous one cannot pass
+  // for it. The next step must wait for the server's answer: when the answer
+  // comes, React resets the form and would wipe a value filled in before it
+  await create.click();
+  await expect(emptyError).toBeVisible();
+
+  await field.fill(TOO_LONG_NAME);
+  await create.click();
+  await expect(longError).toBeVisible();
+
+  await field.fill("   ");
+  await create.click();
+  await expect(emptyError).toBeVisible();
+
+  await expect(dialog).toBeVisible();
+  expect(await allGroups()).toEqual([]);
+
+  await field.fill("  Дача  ");
+  await create.click();
+
+  await expect(dialog).toBeHidden();
+  await expectCardGroups(page, [["Дача", true]]);
+  expect(await allGroups()).toEqual(["Дача"]);
+});
+
+test("контакт удалён в другой вкладке, создаю группу → в окне «Контакт не найден», группа не создана", async ({
+  page,
+}) => {
+  const anna = await createContact("Анна");
+  await page.goto(`/contacts/${anna}`);
+  const dialog = await openNewGroupDialog(page);
+
+  // Another tab deletes the contact
+  await query("delete from contacts where id = $1", [anna]);
+
+  await dialog.getByLabel("Название").fill("Дача");
+  await dialog.getByRole("button", { name: "Создать" }).click();
+
+  await expect(dialog.getByText("Контакт не найден")).toBeVisible();
+  await expect(dialog).toBeVisible();
+  expect(await allGroups()).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// The "Groups" page
+// ---------------------------------------------------------------------------
 
 test("переименовал «Дача» в «Дача в Лесном» → новое название на странице «Группы», в фильтре и в карточках, в группе те же контакты", async ({
   page,

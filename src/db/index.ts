@@ -3,7 +3,10 @@ import "server-only";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import { installSafeQueryErrors } from "./safe-query-errors";
 import * as schema from "./schema";
+
+installSafeQueryErrors();
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
