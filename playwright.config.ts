@@ -30,6 +30,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: testDatabaseUrl(),
       E2E_SERVER: "1",
+      // UTC, whatever the computer: the app must show Moscow's time by itself,
+      // and on a computer in Moscow a test could not tell the difference
+      TZ: "UTC",
     },
   },
 });

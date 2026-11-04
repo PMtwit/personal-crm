@@ -132,6 +132,55 @@ describe("Срок отсчитывается от последней замет
   });
 });
 
+describe("Даты по московскому времени", () => {
+  // Written at night in Moscow, when it is still the day before in UTC
+  it.each([
+    ["месяц, 1 марта", "month", "2026-03-01T01:00", "2026-04-01T01:00"],
+    ["месяц, 31 января", "month", "2026-01-31T01:00", "2026-02-28T01:00"],
+    [
+      "месяц, сразу после полуночи",
+      "month",
+      "2026-03-01T00:01",
+      "2026-04-01T00:01",
+    ],
+    ["месяц, перед 03:00", "month", "2026-03-01T02:59", "2026-04-01T02:59"],
+    ["квартал, 30 ноября", "quarter", "2026-11-30T01:00", "2027-02-28T01:00"],
+    ["год, 29 февраля", "year", "2028-02-29T01:00", "2029-02-28T01:00"],
+    ["неделя, 1 марта", "week", "2026-03-01T01:00", "2026-03-08T01:00"],
+    ["месяц, днём", "month", "2026-01-10T15:00", "2026-02-10T15:00"],
+  ] as const)("%s", async (_case, interval, note, due) => {
+    const id = await contactWith(interval);
+    await noteAt(id, new Date(`${note}:00+03:00`));
+
+    expect((await getTouchStatus(id)).dueAt).toEqual(
+      new Date(`${due}:00+03:00`),
+    );
+  });
+
+  it("без заметок: частоту выбрали ночью 1 марта → срок 1 апреля", async () => {
+    const id = await contactWith(
+      "month",
+      new Date("2026-03-01T01:00:00+03:00"),
+    );
+
+    expect((await getTouchStatus(id)).dueAt).toEqual(
+      new Date("2026-04-01T01:00:00+03:00"),
+    );
+  });
+
+  it("блок «Пора связаться» считает срок так же, как карточка", async () => {
+    const id = await contactWith("month");
+    await noteAt(id, new Date("2026-03-01T01:00:00+03:00"));
+
+    const [due] = await listDueContacts();
+
+    expect(due).toMatchObject({
+      id,
+      dueAt: new Date("2026-04-01T01:00:00+03:00"),
+    });
+  });
+});
+
 describe("Без заметок срок отсчитывается от выбора частоты", () => {
   it("выбрал «Раз в месяц» 1 октября → срок 1 ноября", async () => {
     const id = await contactWith("month", utcNoon("2026-10-01"));

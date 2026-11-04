@@ -2,11 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { touchStatusLine } from "@/lib/keep-in-touch";
 
-// Local dates: the line is made in the server's time zone. Noon keeps a date
-// away from the edges of a day
-const TODAY = new Date(2026, 5, 15, 12);
-const DUE_THIS_YEAR = new Date(2026, 10, 15, 12);
-const DUE_NEXT_YEAR = new Date(2027, 10, 15, 12);
+// Exact moments. Noon in Moscow keeps a date away from the edges of a day
+const TODAY = new Date("2026-06-15T12:00:00+03:00");
+const DUE_THIS_YEAR = new Date("2026-11-15T12:00:00+03:00");
+const DUE_NEXT_YEAR = new Date("2027-11-15T12:00:00+03:00");
 
 describe("Карточка показывает срок", () => {
   beforeEach(() => {
@@ -33,6 +32,12 @@ describe("Карточка показывает срок", () => {
       text: "Связаться до 15 ноября 2027",
       overdue: false,
     });
+  });
+
+  it("срок ночью по Москве → московская дата, хотя в UTC ещё вчера", () => {
+    expect(touchStatusLine(new Date("2026-02-09T22:00:00Z"), -1)).toMatchObject(
+      { text: "Связаться до 10 февраля" },
+    );
   });
 
   it("до срока меньше суток → ещё «Связаться до»", () => {
