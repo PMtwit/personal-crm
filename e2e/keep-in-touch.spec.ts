@@ -71,15 +71,31 @@ async function savedInterval(contactId: number) {
   return row;
 }
 
+// The app shows Moscow's dates, whatever the time zone of the computer
+const TIME_ZONE = "Europe/Moscow";
+
+function yearOf(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    timeZone: TIME_ZONE,
+  });
+}
+
 // "15 ноября"; with a year ("15 ноября 2027") if it is not the current one
 function dayMonth(date: Date): string {
   const text = date.toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "long",
+    timeZone: TIME_ZONE,
   });
-  return date.getFullYear() === new Date().getFullYear()
-    ? text
-    : `${text} ${date.getFullYear()}`;
+  return yearOf(date) === yearOf(new Date()) ? text : `${text} ${yearOf(date)}`;
+}
+
+// 01:30 yesterday in Moscow: the night when UTC is still on the day before.
+// Moscow is at +03:00 all year round
+function lastNightInMoscow(): Date {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: TIME_ZONE });
+  return new Date(new Date(`${today}T01:30:00+03:00`).getTime() - DAY_MS);
 }
 
 function intervalGroup(page: Page) {
@@ -181,6 +197,30 @@ test("срок считается от последней заметки", async
   await page.goto(`/contacts/${id}`);
 
   const due = dayMonth(new Date(Date.now() + 4 * DAY_MS));
+  await expect(page.getByText(`Связаться до ${due}`)).toBeVisible();
+});
+
+test("заметка ночью по Москве → в карточке московские дата и время заметки и срока", async ({
+  page,
+}) => {
+  const id = await createContact("ночная заметка", {
+    interval: { value: "week", setDaysAgo: 30 },
+  });
+  const night = lastNightInMoscow();
+  await query(
+    "insert into notes (contact_id, body, created_at) values ($1, $2, $3)",
+    [id, "Созвонились ночью", night],
+  );
+  await page.goto(`/contacts/${id}`);
+
+  const note = page
+    .getByRole("list", { name: "Заметки о контакте" })
+    .getByRole("listitem")
+    .first();
+  await expect(note).toContainText(dayMonth(night));
+  await expect(note).toContainText("в 01:30");
+
+  const due = dayMonth(new Date(night.getTime() + 7 * DAY_MS));
   await expect(page.getByText(`Связаться до ${due}`)).toBeVisible();
 });
 

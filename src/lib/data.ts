@@ -15,6 +15,7 @@ import { db } from "@/db";
 import { contactGroups, contacts, groups, notes } from "@/db/schema";
 import type { TouchInterval } from "@/lib/keep-in-touch";
 import { escapeLike, searchTerms } from "@/lib/search";
+import { APP_TIME_ZONE } from "@/lib/time-zone";
 import type { ContactInput } from "@/lib/validation";
 
 export type ContactListItem = Pick<
@@ -137,10 +138,12 @@ function touchIntervalSql(interval: SQL | typeof contacts.touchInterval): SQL {
 }
 
 // The due date: the last note (or, with no notes, the moment the interval was
-// set) plus the interval. null if the contact has no interval
+// set) plus the interval. null if the contact has no interval.
+// date_add, not "+": "+" counts months by the calendar of the database's session,
+// and a note written at night in Moscow is still on the day before in UTC:
+// March 1 + 1 month would come out as March 29, not April 1
 function dueAtSql(lastNoteAt: SQL): SQL<Date | null> {
-  // In parentheses: the result is used inside other expressions, for example now() - due
-  return sql<Date | null>`(coalesce(${lastNoteAt}, ${contacts.touchIntervalSetAt}) + ${touchIntervalSql(contacts.touchInterval)})`.mapWith(
+  return sql<Date | null>`date_add(coalesce(${lastNoteAt}, ${contacts.touchIntervalSetAt}), ${touchIntervalSql(contacts.touchInterval)}, ${APP_TIME_ZONE}::text)`.mapWith(
     contacts.touchIntervalSetAt,
   );
 }

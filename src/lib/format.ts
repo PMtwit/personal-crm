@@ -1,3 +1,5 @@
+import { APP_TIME_ZONE } from "@/lib/time-zone";
+
 const pluralRules = new Intl.PluralRules("ru-RU");
 
 type PluralForms = { one: string; few: string; many: string };
@@ -29,17 +31,21 @@ const dayMonthFormat = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
   year: "numeric",
+  timeZone: APP_TIME_ZONE,
 });
+
+function datePart(date: Date, type: Intl.DateTimeFormatPartTypes) {
+  return dayMonthFormat.formatToParts(date).find((p) => p.type === type)?.value;
+}
 
 // "15 ноября"; the year is added only if it is not the current one: "15 ноября 2027".
 // Built from parts, because ru-RU appends " г." to a full date
 export function formatDueDate(date: Date, now: Date = new Date()): string {
-  const parts = dayMonthFormat.formatToParts(date);
-  const part = (type: string) => parts.find((p) => p.type === type)?.value;
-  const dayAndMonth = `${part("day")} ${part("month")}`;
-  return date.getFullYear() === now.getFullYear()
+  const dayAndMonth = `${datePart(date, "day")} ${datePart(date, "month")}`;
+  const year = datePart(date, "year");
+  return year === datePart(now, "year")
     ? dayAndMonth
-    : `${dayAndMonth} ${part("year")}`;
+    : `${dayAndMonth} ${year}`;
 }
 
 // How late the contact is, in whole days after the due date
@@ -55,6 +61,7 @@ const dateTimeFormat = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: APP_TIME_ZONE,
 });
 
 export function formatDateTime(date: Date): string {

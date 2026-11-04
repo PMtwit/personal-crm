@@ -21,7 +21,9 @@ export default defineConfig({
     fileParallelism: false,
     // A call counted in one test (for example revalidatePath) must not leak into the next
     clearMocks: true,
-    env: { DATABASE_URL: testDatabaseUrl("unit_test") },
+    // UTC, whatever the computer: the app must show Moscow's time by itself, and
+    // on a computer in Moscow a test could not tell the difference
+    env: { DATABASE_URL: testDatabaseUrl("unit_test"), TZ: "UTC" },
     globalSetup: ["./test/global-setup.ts"],
     setupFiles: ["./test/setup.ts"],
   },
