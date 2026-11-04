@@ -455,18 +455,22 @@ test("пустое и слишком длинное название → оши�
   const field = dialog.getByLabel("Название");
   const create = dialog.getByRole("button", { name: "Создать" });
 
-  await create.click();
-  await expect(dialog.getByText("Укажите название")).toBeVisible();
+  const emptyError = dialog.getByText("Укажите название");
+  const longError = dialog.getByText("Слишком длинно: не больше 50 символов");
 
-  await field.fill("   ");
+  // The expected message changes at every step, so the previous one cannot pass
+  // for it. The next step must wait for the server's answer: when the answer
+  // comes, React resets the form and would wipe a value filled in before it
   await create.click();
-  await expect(dialog.getByText("Укажите название")).toBeVisible();
+  await expect(emptyError).toBeVisible();
 
   await field.fill(TOO_LONG_NAME);
   await create.click();
-  await expect(
-    dialog.getByText("Слишком длинно: не больше 50 символов"),
-  ).toBeVisible();
+  await expect(longError).toBeVisible();
+
+  await field.fill("   ");
+  await create.click();
+  await expect(emptyError).toBeVisible();
 
   await expect(dialog).toBeVisible();
   expect(await allGroups()).toEqual([]);
