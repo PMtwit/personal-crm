@@ -123,9 +123,11 @@
   --secondary: #f2f3f7;
   --secondary-foreground: #1d2023;
   --muted: #f2f3f7;
-  --muted-foreground: #626c77;
+  /* Both grays are darker than on the landing, to stay easy to read on the
+     gray plates too: globals.test.ts checks their contrast */
+  --muted-foreground: #525c66;
   /* Dates, hints, empty values */
-  --subtle: #969fa8;
+  --subtle: #66707a;
   --accent: #f2f3f7;
   --accent-foreground: #1d2023;
   /* Darker than primary, so error text stays readable on white */
