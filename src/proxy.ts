@@ -10,21 +10,26 @@ export function proxy(request: NextRequest) {
   if (getSessionCookie(request)) {
     return NextResponse.next();
   }
-  // Next.js wants a full address here. Behind nginx the address of the request
-  // can carry the server's own host (0.0.0.0), so the host and the protocol
-  // are taken from what nginx passes on: the address the person typed
-  const login = request.nextUrl.clone();
-  login.pathname = "/login";
-  login.search = "";
-  const host = request.headers.get("host");
-  if (host) {
-    login.host = host;
+  return NextResponse.redirect(loginAddress(request));
+}
+
+// Next.js wants a full address here. Behind nginx the address of the request
+// carries the app's own host and port (0.0.0.0:3000), so the address is built
+// anew from what nginx passes on: the host the person typed and the protocol.
+// Changing only the host of the old address would keep its port 3000
+function loginAddress(request: NextRequest) {
+  const own = request.nextUrl;
+  const host = request.headers.get("host") || own.host;
+  const forwarded = request.headers.get("x-forwarded-proto");
+  const protocol =
+    forwarded === "http" || forwarded === "https"
+      ? `${forwarded}:`
+      : own.protocol;
+  try {
+    return new URL("/login", `${protocol}//${host}`);
+  } catch {
+    return new URL("/login", own);
   }
-  const protocol = request.headers.get("x-forwarded-proto");
-  if (protocol === "http" || protocol === "https") {
-    login.protocol = protocol;
-  }
-  return NextResponse.redirect(login);
 }
 
 export const config = {
