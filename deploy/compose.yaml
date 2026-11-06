@@ -11,6 +11,16 @@ x-app: &app
   image: ghcr.io/pmtwit/personal-crm:${APP_TAG:?run deploy.sh with the image tag}
   environment:
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    # Login. The values live in the server's .env. Without one of them compose
+    # stops on the first command of deploy.sh, before the backup: nothing changes
+    # and the version that runs now keeps running
+    BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (openssl rand -hex 32)}
+    BETTER_AUTH_URL: https://app.pmcrm.site
+    # Where the login letters go: Resend's SMTP, see README
+    SMTP_URL: ${SMTP_URL:?set SMTP_URL in .env (see README)}
+    # The owner of the data that existed before login: the migration gives it
+    # to the user with this email. See README
+    OWNER_EMAIL: ${OWNER_EMAIL:?set OWNER_EMAIL in .env (see README)}
   depends_on:
     db:
       condition: service_healthy

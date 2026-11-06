@@ -2,7 +2,7 @@ import { inspect } from "node:util";
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "@/db";
 import { contacts, groups } from "@/db/schema";
@@ -15,7 +15,13 @@ import {
   updateContact,
 } from "@/lib/data";
 
-import { createContact, createGroup } from "../../test/helpers";
+import { createContact, createGroup, createOwner } from "../../test/helpers";
+
+let owner: string;
+
+beforeEach(async () => {
+  owner = await createOwner();
+});
 
 // Real failures on the real test database: a failed query must not carry what
 // the owner wrote about people into the logs. Next.js prints an uncaught error
@@ -62,7 +68,7 @@ function expectNoneOf(error: Error, values: string[]) {
 describe("A failed query keeps personal data out of the error", () => {
   it("adding a contact: name, phone, email, about and how we met", async () => {
     const error = await failureOf(() =>
-      insertContact({ ...CONTACT, name: `${CONTACT.name}${NUL}` }),
+      insertContact(owner, { ...CONTACT, name: `${CONTACT.name}${NUL}` }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
@@ -71,27 +77,27 @@ describe("A failed query keeps personal data out of the error", () => {
   it("Postgres quoting the whole row in its answer", async () => {
     // A not-null failure: the database answers "Failing row contains (...)"
     const error = await failureOf(() =>
-      insertContact({ ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
   });
 
   it("changing a contact", async () => {
-    const id = await createContact("Анна");
+    const id = await createContact(owner, "Анна");
 
     const error = await failureOf(() =>
-      updateContact(id, { ...CONTACT, phone: `${CONTACT.phone}${NUL}` }),
+      updateContact(owner, id, { ...CONTACT, phone: `${CONTACT.phone}${NUL}` }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
   });
 
   it("a note", async () => {
-    const id = await createContact("Анна");
+    const id = await createContact(owner, "Анна");
     const body = "Тайная заметка";
 
-    const error = await failureOf(() => insertNote(id, `${body}${NUL}`));
+    const error = await failureOf(() => insertNote(owner, id, `${body}${NUL}`));
 
     expectNoneOf(error, [body]);
   });
@@ -99,28 +105,28 @@ describe("A failed query keeps personal data out of the error", () => {
   it("a search query", async () => {
     const term = "Тайнопоиск";
 
-    const error = await failureOf(() => listContacts(`${term}${NUL}`));
+    const error = await failureOf(() => listContacts(owner, `${term}${NUL}`));
 
     expectNoneOf(error, [term]);
   });
 
   it("a group's name inside a transaction", async () => {
-    const id = await createContact("Анна");
+    const id = await createContact(owner, "Анна");
     const name = "Тайная группа";
 
     const error = await failureOf(() =>
-      createGroupForContact(id, `${name}${NUL}`),
+      createGroupForContact(owner, id, `${name}${NUL}`),
     );
 
     expectNoneOf(error, [name]);
   });
 
   it("a group's name Postgres quotes when the name is taken", async () => {
-    await createGroup("Тайная группа");
+    await createGroup(owner, "Тайная группа");
 
     // Straight to the table: the app's own code handles a taken name
     const error = await failureOf(() =>
-      db.insert(groups).values({ name: "тайная группа" }),
+      db.insert(groups).values({ userId: owner, name: "тайная группа" }),
     );
 
     expectNoneOf(error, ["Тайная группа"]);
@@ -132,7 +138,9 @@ describe("A failed query keeps personal data out of the error", () => {
     });
     try {
       const error = await failureOf(() =>
-        drizzle({ client: pool }).insert(contacts).values(CONTACT),
+        drizzle({ client: pool })
+          .insert(contacts)
+          .values({ userId: owner, ...CONTACT }),
       );
 
       expectNoneOf(error, Object.values(CONTACT));
@@ -146,7 +154,7 @@ describe("A failed query keeps personal data out of the error", () => {
 describe("A failed query still says what went wrong", () => {
   it("the query without its values, the error's code, the table and the column", async () => {
     const error = await failureOf(() =>
-      insertContact({ ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
     );
 
     expect(error.message).toContain('insert into "contacts"');
@@ -160,32 +168,32 @@ describe("A failed query still says what went wrong", () => {
   });
 
   it("the name of the broken constraint", async () => {
-    await createGroup("Семья");
+    await createGroup(owner, "Семья");
 
     const error = await failureOf(() =>
-      db.insert(groups).values({ name: "семья" }),
+      db.insert(groups).values({ userId: owner, name: "семья" }),
     );
 
-    expect(error.message).toContain("groups_name_lower_idx");
+    expect(error.message).toContain("groups_user_name_lower_idx");
     expect(error).toMatchObject({
       code: "23505",
       table: "groups",
-      constraint: "groups_name_lower_idx",
+      constraint: "groups_user_name_lower_idx",
     });
   });
 
   it("the stack shows which function of the app failed", async () => {
     const error = await failureOf(() =>
-      insertContact({ ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
     );
 
     expect(error.stack).toContain("insertContact");
   });
 
   it("the app can still tell a taken name from other failures", async () => {
-    await createGroup("Семья");
-    const friends = await createGroup("Друзья");
+    await createGroup(owner, "Семья");
+    const friends = await createGroup(owner, "Друзья");
 
-    expect(await renameGroup(friends, "семья")).toBe("duplicate");
+    expect(await renameGroup(owner, friends, "семья")).toBe("duplicate");
   });
 });

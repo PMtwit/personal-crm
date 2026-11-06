@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 
-import { testDatabaseUrl } from "./test-database";
+import { OWNER_ID_SQL, testDatabaseUrl } from "./test-database";
 
 // "Keep in touch": the interval picker and the due date in the contact card.
 // Every test creates its own contacts, named with PREFIX, and deletes them
@@ -43,8 +43,8 @@ async function createContact(
 ): Promise<number> {
   const { interval, noteDaysAgo = [] } = options;
   const [row] = await query<{ id: number }>(
-    `insert into contacts (name, touch_interval, touch_interval_set_at)
-     values ($1, $2, $3) returning id`,
+    `insert into contacts (user_id, name, touch_interval, touch_interval_set_at)
+     values (${OWNER_ID_SQL}, $1, $2, $3) returning id`,
     [
       `${PREFIX} ${label}`,
       interval?.value ?? null,
@@ -838,7 +838,7 @@ test("контакт удалён в другой вкладке → в окне
 
 async function createGroup(label: string): Promise<number> {
   const [row] = await query<{ id: number }>(
-    "insert into groups (name) values ($1) returning id",
+    `insert into groups (user_id, name) values (${OWNER_ID_SQL}, $1) returning id`,
     [fullName(label)],
   );
   return row.id;

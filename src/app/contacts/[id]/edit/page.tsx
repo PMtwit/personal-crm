@@ -7,6 +7,7 @@ import { BackLink } from "@/components/back-link";
 import { ContactForm } from "@/components/contact-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getContact } from "@/lib/data";
+import { requireUserId } from "@/lib/session";
 import { parseId, toContactValues } from "@/lib/validation";
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ async function EditContact({
   if (id === null) {
     notFound();
   }
-  const contact = await getContact(id);
+  const contact = await getContact(await requireUserId(), id);
   if (!contact) {
     notFound();
   }

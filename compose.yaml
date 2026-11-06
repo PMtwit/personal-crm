@@ -19,5 +19,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Local mail catcher: login letters never leave this computer.
+  # SMTP on 1025 (the app sends here), letters are read at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   pgdata:

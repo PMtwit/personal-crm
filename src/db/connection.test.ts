@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { contacts } from "@/db/schema";
 
+import { createOwner } from "../../test/helpers";
+
 describe("test database", () => {
   it("is a separate database that tests may clear", async () => {
     const result = await db.execute(sql`select current_database() as name`);
@@ -11,7 +13,8 @@ describe("test database", () => {
   });
 
   it("has the schema from migrations and starts every test empty", async () => {
-    await db.insert(contacts).values({ name: "Проверка базы" });
+    const owner = await createOwner();
+    await db.insert(contacts).values({ userId: owner, name: "Проверка базы" });
     const rows = await db.select().from(contacts);
     expect(rows).toHaveLength(1);
   });

@@ -3,6 +3,7 @@ import { listDueContacts, listGroups } from "@/lib/data";
 import { overdueText } from "@/lib/format";
 import { resolveSelectedGroup } from "@/lib/groups";
 import { touchIntervalLabels } from "@/lib/keep-in-touch";
+import { requireUserId } from "@/lib/session";
 
 // "Time to get in touch" on the home page: contacts whose due date has come.
 // With a group chosen in the filter, only the people of this group.
@@ -18,8 +19,9 @@ export async function DueContacts({
     return null;
   }
 
-  const group = resolveSelectedGroup(groupParam, await listGroups());
-  const due = await listDueContacts(group?.id ?? null);
+  const userId = await requireUserId();
+  const group = resolveSelectedGroup(groupParam, await listGroups(userId));
+  const due = await listDueContacts(userId, group?.id ?? null);
   if (due.length === 0) {
     return null;
   }

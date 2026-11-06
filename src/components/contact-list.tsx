@@ -12,6 +12,7 @@ import {
 } from "@/lib/data";
 import { groupLetter } from "@/lib/format";
 import { listCaption, resolveSelectedGroup } from "@/lib/groups";
+import { requireUserId } from "@/lib/session";
 
 export async function ContactList({
   searchParams,
@@ -20,13 +21,16 @@ export async function ContactList({
 }) {
   const { q, group: groupParam } = await searchParams;
   const query = (Array.isArray(q) ? q[0] : q)?.trim() ?? "";
-  const group = resolveSelectedGroup(groupParam, await listGroups());
+  const userId = await requireUserId();
+  // A group id of someone else in the address is not among the user's groups:
+  // "All" is chosen, as for a group that does not exist
+  const group = resolveSelectedGroup(groupParam, await listGroups(userId));
   const groupId = group?.id ?? null;
   // `total` is in the group (or in all, with no group); `allTotal` is in all
   const [items, total, allTotal] = await Promise.all([
-    listContacts(query, groupId),
-    countContacts(groupId),
-    group ? countContacts() : null,
+    listContacts(userId, query, groupId),
+    countContacts(userId, groupId),
+    group ? countContacts(userId) : null,
   ]);
 
   if ((allTotal ?? total) === 0) {
@@ -37,7 +41,7 @@ export async function ContactList({
         </p>
         <Link href="/contacts/new" className={buttonVariants({ size: "lg" })}>
           <Plus aria-hidden />
-          Добавить первый контакт
+          Добавь первый контакт
         </Link>
       </div>
     );

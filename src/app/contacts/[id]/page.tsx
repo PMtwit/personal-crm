@@ -21,6 +21,7 @@ import {
 } from "@/lib/data";
 import { formatDateTime, notesCount } from "@/lib/format";
 import { touchStatusLine } from "@/lib/keep-in-touch";
+import { requireUserId } from "@/lib/session";
 import { parseId } from "@/lib/validation";
 
 export const metadata: Metadata = {
@@ -47,12 +48,14 @@ async function ContactCard({
   if (id === null) {
     notFound();
   }
+  // Someone else's contact is "not found", like one that does not exist
+  const userId = await requireUserId();
   const [contact, notes, touch, groups, memberOf] = await Promise.all([
-    getContact(id),
-    listNotes(id),
-    getTouchStatus(id),
-    listGroups(),
-    listContactGroupIds(id),
+    getContact(userId, id),
+    listNotes(userId, id),
+    getTouchStatus(userId, id),
+    listGroups(userId),
+    listContactGroupIds(userId, id),
   ]);
   if (!contact) {
     notFound();

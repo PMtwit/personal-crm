@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 
+import { OWNER_STATE } from "./auth";
 import { SEEDED_CONTACTS } from "./global-setup";
 import { testDatabaseUrl } from "./test-database";
 
@@ -126,7 +127,8 @@ test("открыл тот же адрес в другом браузере → �
 }) => {
   // A separate browser context shares no cookies or storage with the others:
   // whatever it sees comes from the server
-  const otherBrowser = await browser.newContext();
+  // Another browser with the same login: a fresh one without it would be sent to the login page
+  const otherBrowser = await browser.newContext({ storageState: OWNER_STATE });
   const page = await otherBrowser.newPage();
 
   await page.goto("/");
@@ -237,7 +239,7 @@ test("удалил контакт → пропал из списка вмест�
   ).toBeVisible();
   await page.goto(cardUrl);
   await expect(
-    page.getByRole("heading", { name: "Такой страницы нет" }),
+    page.getByRole("heading", { name: "Контакт не найден" }),
   ).toBeVisible();
   expect(await countNotes(contactId)).toBe(0);
 });
@@ -245,6 +247,6 @@ test("удалил контакт → пропал из списка вмест�
 test("несуществующий контакт → понятное сообщение", async ({ page }) => {
   await page.goto("/contacts/999999");
   await expect(
-    page.getByRole("heading", { name: "Такой страницы нет" }),
+    page.getByRole("heading", { name: "Контакт не найден" }),
   ).toBeVisible();
 });

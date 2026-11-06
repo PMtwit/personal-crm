@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 
-import { testDatabaseUrl } from "./test-database";
+import { OWNER_ID_SQL, testDatabaseUrl } from "./test-database";
 
 // Groups: the pills in the contact card, a new group from the card, and renaming
 // and deleting on the "Groups" page.
@@ -44,12 +44,12 @@ function fullName(label: string) {
 // Boris is only in "Дача", without an interval, with a note
 async function createDachaAndFamily() {
   const [anna] = await query<{ id: number }>(
-    `insert into contacts (name, touch_interval, touch_interval_set_at)
-     values ($1, 'month', now()) returning id`,
+    `insert into contacts (user_id, name, touch_interval, touch_interval_set_at)
+     values (${OWNER_ID_SQL}, $1, 'month', now()) returning id`,
     [fullName("Анна")],
   );
   const [boris] = await query<{ id: number }>(
-    "insert into contacts (name) values ($1) returning id",
+    `insert into contacts (user_id, name) values (${OWNER_ID_SQL}, $1) returning id`,
     [fullName("Борис")],
   );
   await query(
@@ -57,10 +57,10 @@ async function createDachaAndFamily() {
     [anna.id, ANNA_NOTE, boris.id, BORIS_NOTE],
   );
   const [dacha] = await query<{ id: number }>(
-    "insert into groups (name) values ('Дача') returning id",
+    `insert into groups (user_id, name) values (${OWNER_ID_SQL}, 'Дача') returning id`,
   );
   const [family] = await query<{ id: number }>(
-    "insert into groups (name) values ('Семья') returning id",
+    `insert into groups (user_id, name) values (${OWNER_ID_SQL}, 'Семья') returning id`,
   );
   await query(
     `insert into contact_groups (contact_id, group_id)
@@ -107,7 +107,7 @@ async function expectCardGroups(
 
 async function createContact(label: string): Promise<number> {
   const [row] = await query<{ id: number }>(
-    "insert into contacts (name) values ($1) returning id",
+    `insert into contacts (user_id, name) values (${OWNER_ID_SQL}, $1) returning id`,
     [fullName(label)],
   );
   return row.id;
@@ -115,7 +115,7 @@ async function createContact(label: string): Promise<number> {
 
 async function createGroup(name: string): Promise<number> {
   const [row] = await query<{ id: number }>(
-    "insert into groups (name) values ($1) returning id",
+    `insert into groups (user_id, name) values (${OWNER_ID_SQL}, $1) returning id`,
     [name],
   );
   return row.id;

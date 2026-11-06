@@ -6,6 +6,7 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   isNotNull,
   sql,
   type SQL,
@@ -17,6 +18,12 @@ import type { TouchInterval } from "@/lib/keep-in-touch";
 import { escapeLike, searchTerms } from "@/lib/search";
 import { APP_TIME_ZONE } from "@/lib/time-zone";
 import type { ContactInput } from "@/lib/validation";
+
+// Every function here takes the id of the logged-in user first and works only
+// with that user's contacts and groups. A contact or a group of someone else
+// is "not found", the same answer as for one that does not exist: the id comes
+// from the page address or a form, so it can be anyone's.
+// The id of the user comes from the session (requireUserId), never from the request
 
 export type ContactListItem = Pick<
   typeof contacts.$inferSelect,
@@ -31,13 +38,17 @@ function inGroup(groupId: number): SQL {
 
 // With a group, only its contacts; null means all contacts
 export async function listContacts(
+  userId: string,
   query: string,
   groupId: number | null = null,
 ): Promise<ContactListItem[]> {
   const normalizedName = sql`replace(lower(${contacts.name}), 'ё', 'е')`;
-  const conditions = searchTerms(query).map(
-    (term) => sql`${normalizedName} like ${`%${escapeLike(term)}%`}`,
-  );
+  const conditions = [
+    eq(contacts.userId, userId),
+    ...searchTerms(query).map(
+      (term) => sql`${normalizedName} like ${`%${escapeLike(term)}%`}`,
+    ),
+  ];
   if (groupId !== null) {
     conditions.push(inGroup(groupId));
   }
@@ -52,7 +63,7 @@ export async function listContacts(
         email: contacts.email,
       })
       .from(contacts)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       // Russian alphabetical order: "Александр Ермаков" before "Александра Белых",
       // "Ё" next to "Е" (the default collation ignores spaces)
       .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id))
@@ -61,63 +72,83 @@ export async function listContacts(
 
 // With a group, only the contacts in it; null means all contacts
 export async function countContacts(
+  userId: string,
   groupId: number | null = null,
 ): Promise<number> {
   const [row] = await db
     .select({ total: count() })
     .from(contacts)
-    .where(groupId === null ? undefined : inGroup(groupId));
+    .where(
+      and(
+        eq(contacts.userId, userId),
+        groupId === null ? undefined : inGroup(groupId),
+      ),
+    );
   return row.total;
 }
 
-export async function getContact(id: number) {
-  const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+export async function getContact(userId: string, id: number) {
+  const [contact] = await db
+    .select()
+    .from(contacts)
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)));
   return contact ?? null;
 }
 
-export async function listNotes(contactId: number) {
+// A note belongs to the owner of its contact: the notes of someone else's
+// contact are an empty list
+export async function listNotes(userId: string, contactId: number) {
   return db
-    .select()
+    .select(getTableColumns(notes))
     .from(notes)
-    .where(eq(notes.contactId, contactId))
+    .innerJoin(contacts, eq(contacts.id, notes.contactId))
+    .where(and(eq(notes.contactId, contactId), eq(contacts.userId, userId)))
     .orderBy(desc(notes.createdAt), desc(notes.id));
 }
 
-export async function insertContact(input: ContactInput): Promise<number> {
+export async function insertContact(
+  userId: string,
+  input: ContactInput,
+): Promise<number> {
   const [row] = await db
     .insert(contacts)
-    .values(input)
+    .values({ ...input, userId })
     .returning({ id: contacts.id });
   return row.id;
 }
 
 export async function updateContact(
+  userId: string,
   id: number,
   input: ContactInput,
 ): Promise<boolean> {
   const updated = await db
     .update(contacts)
     .set({ ...input, updatedAt: sql`now()` })
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
     .returning({ id: contacts.id });
   return updated.length > 0;
 }
 
 // Returns the deleted contact's name, or null if there was no such contact.
 // The contact's notes are deleted by the database: the foreign key cascades
-export async function deleteContact(id: number): Promise<string | null> {
+export async function deleteContact(
+  userId: string,
+  id: number,
+): Promise<string | null> {
   const [deleted] = await db
     .delete(contacts)
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
     .returning({ name: contacts.name });
   return deleted?.name ?? null;
 }
 
 export async function insertNote(
+  userId: string,
   contactId: number,
   body: string,
 ): Promise<boolean> {
-  const contact = await getContact(contactId);
+  const contact = await getContact(userId, contactId);
   if (!contact) {
     return false;
   }
@@ -164,7 +195,10 @@ export type TouchStatus = {
   overdueDays: number;
 };
 
-export async function getTouchStatus(contactId: number): Promise<TouchStatus> {
+export async function getTouchStatus(
+  userId: string,
+  contactId: number,
+): Promise<TouchStatus> {
   const lastNoteAt = sql`(select max(${notes.createdAt}) from ${notes} where ${notes.contactId} = ${contacts.id})`;
   const dueAt = dueAtSql(lastNoteAt);
   const [row] = await db
@@ -174,7 +208,7 @@ export async function getTouchStatus(contactId: number): Promise<TouchStatus> {
       overdueDays: overdueDaysSql(dueAt),
     })
     .from(contacts)
-    .where(eq(contacts.id, contactId));
+    .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)));
   return row ?? { touchInterval: null, dueAt: null, overdueDays: 0 };
 }
 
@@ -182,6 +216,7 @@ export async function getTouchStatus(contactId: number): Promise<TouchStatus> {
 // Choosing the same interval again does not restart the countdown.
 // Returns false if there is no such contact (deleted in another tab)
 export async function updateTouchInterval(
+  userId: string,
   id: number,
   interval: TouchInterval | null,
 ): Promise<boolean> {
@@ -195,7 +230,7 @@ export async function updateTouchInterval(
           : sql`case when ${contacts.touchInterval} is distinct from ${interval}::touch_interval then now() else ${contacts.touchIntervalSetAt} end`,
       updatedAt: sql`now()`,
     })
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
     .returning({ id: contacts.id });
   return updated.length > 0;
 }
@@ -213,6 +248,7 @@ export type DueContact = {
 // first; contacts with the same due date go by name, as in the list.
 // With a group, only the contacts in it; null means all contacts
 export async function listDueContacts(
+  userId: string,
   groupId: number | null = null,
 ): Promise<DueContact[]> {
   // The last note of each contact: one row per contact, even with no notes
@@ -239,6 +275,7 @@ export async function listDueContacts(
     .leftJoinLateral(lastNote, sql`true`)
     .where(
       and(
+        eq(contacts.userId, userId),
         isNotNull(contacts.touchInterval),
         sql`${dueAt} <= now()`,
         groupId === null ? undefined : inGroup(groupId),
@@ -264,28 +301,46 @@ export type GroupListItem = {
   contactCount: number;
 };
 
-// All groups by name, in Russian alphabetical order, with the number of contacts
-export async function listGroups(): Promise<GroupListItem[]> {
+// All groups of the user by name, in Russian alphabetical order, with the
+// number of their contacts in each
+export async function listGroups(userId: string): Promise<GroupListItem[]> {
   return db
     .select({
       id: groups.id,
       name: groups.name,
-      contactCount: count(contactGroups.contactId),
+      contactCount: count(contacts.id),
     })
     .from(groups)
     .leftJoin(contactGroups, eq(contactGroups.groupId, groups.id))
+    .leftJoin(
+      contacts,
+      and(
+        eq(contacts.id, contactGroups.contactId),
+        eq(contacts.userId, userId),
+      ),
+    )
+    .where(eq(groups.userId, userId))
     .groupBy(groups.id)
     .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
 }
 
 // Ids of the groups the contact is in
 export async function listContactGroupIds(
+  userId: string,
   contactId: number,
 ): Promise<number[]> {
   const rows = await db
     .select({ groupId: contactGroups.groupId })
     .from(contactGroups)
-    .where(eq(contactGroups.contactId, contactId));
+    .innerJoin(contacts, eq(contacts.id, contactGroups.contactId))
+    .innerJoin(groups, eq(groups.id, contactGroups.groupId))
+    .where(
+      and(
+        eq(contactGroups.contactId, contactId),
+        eq(contacts.userId, userId),
+        eq(groups.userId, userId),
+      ),
+    );
   return rows.map((row) => row.groupId);
 }
 
@@ -296,6 +351,7 @@ export type SetContactGroupResult =
 // Only this one group changes, so two tabs with different groups of one contact
 // do not overwrite each other
 export async function setContactGroup(
+  userId: string,
   contactId: number,
   groupId: number,
   member: boolean,
@@ -306,7 +362,7 @@ export async function setContactGroup(
     const [contact] = await tx
       .select({ id: contacts.id })
       .from(contacts)
-      .where(eq(contacts.id, contactId))
+      .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
       .for("key share");
     if (!contact) {
       return "contact-not-found";
@@ -314,7 +370,7 @@ export async function setContactGroup(
     const [group] = await tx
       .select({ id: groups.id })
       .from(groups)
-      .where(eq(groups.id, groupId))
+      .where(and(eq(groups.id, groupId), eq(groups.userId, userId)))
       .for("key share");
     if (!group) {
       return "group-not-found";
@@ -350,6 +406,7 @@ export async function setContactGroup(
 // Two requests at the same moment give one group: the second waits for the
 // first on the unique index, then finds its group
 export async function createGroupForContact(
+  userId: string,
   contactId: number,
   name: string,
 ): Promise<number | null> {
@@ -357,17 +414,23 @@ export async function createGroupForContact(
     const [contact] = await tx
       .select({ id: contacts.id })
       .from(contacts)
-      .where(eq(contacts.id, contactId))
+      .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
       .for("key share");
     if (!contact) {
       return null;
     }
 
-    await tx.insert(groups).values({ name }).onConflictDoNothing();
+    // The name is unique for one user: another user may have the same one
+    await tx.insert(groups).values({ userId, name }).onConflictDoNothing();
     const [group] = await tx
       .select({ id: groups.id })
       .from(groups)
-      .where(sql`lower(${groups.name}) = lower(${name})`)
+      .where(
+        and(
+          eq(groups.userId, userId),
+          sql`lower(${groups.name}) = lower(${name})`,
+        ),
+      )
       .for("key share");
 
     await tx
@@ -394,10 +457,11 @@ function isUniqueViolation(error: unknown): boolean {
   return code === UNIQUE_VIOLATION || causeCode === UNIQUE_VIOLATION;
 }
 
-// Another group already has this name (in any letter case): "duplicate".
+// Another group of the same user already has this name (in any letter case): "duplicate".
 // The group's own name does not count: changing only the letter case works.
 // No such group (deleted in another tab): "not-found"
 export async function renameGroup(
+  userId: string,
   id: number,
   name: string,
 ): Promise<RenameGroupResult> {
@@ -405,7 +469,7 @@ export async function renameGroup(
     const updated = await db
       .update(groups)
       .set({ name })
-      .where(eq(groups.id, id))
+      .where(and(eq(groups.id, id), eq(groups.userId, userId)))
       .returning({ id: groups.id });
     return updated.length > 0 ? "ok" : "not-found";
   } catch (error) {
@@ -418,10 +482,13 @@ export async function renameGroup(
 
 // The group goes, the contacts stay: the database drops only the rows of
 // "who is in the group". false if there was no such group already
-export async function deleteGroup(id: number): Promise<boolean> {
+export async function deleteGroup(
+  userId: string,
+  id: number,
+): Promise<boolean> {
   const deleted = await db
     .delete(groups)
-    .where(eq(groups.id, id))
+    .where(and(eq(groups.id, id), eq(groups.userId, userId)))
     .returning({ id: groups.id });
   return deleted.length > 0;
 }

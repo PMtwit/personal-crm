@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
@@ -23,7 +24,16 @@ export default defineConfig({
     clearMocks: true,
     // UTC, whatever the computer: the app must show Moscow's time by itself, and
     // on a computer in Moscow a test could not tell the difference
-    env: { DATABASE_URL: testDatabaseUrl("unit_test"), TZ: "UTC" },
+    env: {
+      DATABASE_URL: testDatabaseUrl("unit_test"),
+      TZ: "UTC",
+      // Login in tests: the secret is the one from .env or CI, or a random one
+      // for this run; the letters go to the local Mailpit (docker compose up)
+      BETTER_AUTH_SECRET:
+        process.env.BETTER_AUTH_SECRET || randomBytes(32).toString("hex"),
+      BETTER_AUTH_URL: "http://localhost:3000",
+      SMTP_URL: process.env.SMTP_URL || "smtp://127.0.0.1:1025",
+    },
     globalSetup: ["./test/global-setup.ts"],
     setupFiles: ["./test/setup.ts"],
   },
