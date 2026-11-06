@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { addNoteAction } from "@/app/actions";
 import { DueContacts } from "@/components/due-contacts";
@@ -11,7 +11,15 @@ import {
   createContactWithInterval,
   createGroup,
   formData,
+  signInAs,
 } from "../../test/helpers";
+
+// The block is built for the logged-in user: here it is the owner of the data
+let owner: string;
+
+beforeEach(async () => {
+  owner = await signInAs("owner@example.com");
+});
 
 // The "Time to get in touch" block, called as the home page calls it: with the
 // parameters of the address. The data is in the test database.
@@ -36,7 +44,10 @@ async function dueBlockNames(address: {
 
 // A contact whose due date came: "once a week", chosen that many days ago
 function overdue(name: string, setDaysAgo: number) {
-  return createContactWithInterval(name, { interval: "week", setDaysAgo });
+  return createContactWithInterval(owner, name, {
+    interval: "week",
+    setDaysAgo,
+  });
 }
 
 // Anna and Vera are in "Семья", Boris is in "Дача"; the time has come for all three
@@ -44,8 +55,8 @@ async function familyAndDacha() {
   const anna = await overdue("Анна", 30);
   const vera = await overdue("Вера", 20);
   const boris = await overdue("Борис", 40);
-  const family = await createGroup("Семья");
-  const dacha = await createGroup("Дача");
+  const family = await createGroup(owner, "Семья");
+  const dacha = await createGroup(owner, "Дача");
   await addToGroup(anna, family);
   await addToGroup(vera, family);
   await addToGroup(boris, dacha);

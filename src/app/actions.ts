@@ -16,6 +16,7 @@ import {
   updateTouchInterval,
 } from "@/lib/data";
 import { touchIntervalFormSchema } from "@/lib/keep-in-touch";
+import { requireUserId } from "@/lib/session";
 import {
   contactFields,
   contactSchema,
@@ -73,6 +74,11 @@ function firstErrors(error: z.ZodError): ContactFormState["errors"] {
   );
 }
 
+// Every action starts with requireUserId(): the user comes from the session,
+// never from the form or the arguments. Without a login the person is sent to
+// the login page and nothing is read or changed. A contact or a group of
+// someone else is answered like one that does not exist.
+//
 // Every page shows data straight from the database, so after any change
 // drop the router cache: the list and the card must show the new data
 function refreshAllPages() {
@@ -83,13 +89,14 @@ export async function createContactAction(
   _previousState: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  const userId = await requireUserId();
   const values = readContactValues(formData);
   const parsed = contactSchema.safeParse(values);
   if (!parsed.success) {
     return { values, errors: firstErrors(parsed.error) };
   }
 
-  const id = await insertContact(parsed.data);
+  const id = await insertContact(userId, parsed.data);
   refreshAllPages();
   redirect(`/contacts/${id}`);
 }
@@ -99,6 +106,7 @@ export async function updateContactAction(
   _previousState: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
   const values = readContactValues(formData);
   const parsed = contactSchema.safeParse(values);
@@ -106,7 +114,7 @@ export async function updateContactAction(
     return { values, errors: firstErrors(parsed.error) };
   }
 
-  const found = await updateContact(id, parsed.data);
+  const found = await updateContact(userId, id, parsed.data);
   if (!found) {
     notFound();
   }
@@ -115,8 +123,9 @@ export async function updateContactAction(
 }
 
 export async function deleteContactAction(contactId: number): Promise<void> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
-  const name = await deleteContact(id);
+  const name = await deleteContact(userId, id);
   refreshAllPages();
   // The list shows "Contact deleted" by the ?deleted= parameter. If the contact
   // was already gone (deleted in another tab), just open the list.
@@ -132,6 +141,7 @@ export async function addNoteAction(
   _previousState: NoteFormState,
   formData: FormData,
 ): Promise<NoteFormState> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
   const body = String(formData.get("body") ?? "");
   const parsed = noteSchema.safeParse({ body });
@@ -139,7 +149,7 @@ export async function addNoteAction(
     return { body, error: parsed.error.issues[0].message };
   }
 
-  const saved = await insertNote(id, parsed.data.body);
+  const saved = await insertNote(userId, id, parsed.data.body);
   if (!saved) {
     return { body, error: "Контакт не найден" };
   }
@@ -152,6 +162,7 @@ export async function setTouchIntervalAction(
   _previousState: TouchIntervalFormState,
   formData: FormData,
 ): Promise<TouchIntervalFormState> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
   const parsed = touchIntervalFormSchema.safeParse(
     formData.get("touchInterval"),
@@ -161,6 +172,7 @@ export async function setTouchIntervalAction(
   }
 
   const found = await updateTouchInterval(
+    userId,
     id,
     parsed.data === "none" ? null : parsed.data,
   );
@@ -178,6 +190,7 @@ export async function setContactGroupAction(
   _previousState: ContactGroupFormState,
   formData: FormData,
 ): Promise<ContactGroupFormState> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
   const groupId = parseId(String(formData.get("groupId") ?? ""));
   const member = formData.get("member");
@@ -188,7 +201,7 @@ export async function setContactGroupAction(
     return { error: "Выберите один из вариантов" };
   }
 
-  const result = await setContactGroup(id, groupId, member === "true");
+  const result = await setContactGroup(userId, id, groupId, member === "true");
   if (result === "contact-not-found") {
     return { error: "Контакт не найден" };
   }
@@ -202,6 +215,7 @@ export async function createGroupForContactAction(
   _previousState: GroupNameFormState,
   formData: FormData,
 ): Promise<GroupNameFormState> {
+  const userId = await requireUserId();
   const id = contactIdSchema.parse(contactId);
   const name = String(formData.get("name") ?? "");
   const parsed = groupNameSchema.safeParse(name);
@@ -209,7 +223,7 @@ export async function createGroupForContactAction(
     return { name, error: parsed.error.issues[0].message };
   }
 
-  const groupId = await createGroupForContact(id, parsed.data);
+  const groupId = await createGroupForContact(userId, id, parsed.data);
   if (groupId === null) {
     return { name, error: "Контакт не найден" };
   }
@@ -222,6 +236,7 @@ export async function renameGroupAction(
   _previousState: GroupNameFormState,
   formData: FormData,
 ): Promise<GroupNameFormState> {
+  const userId = await requireUserId();
   const id = groupIdSchema.parse(groupId);
   const name = String(formData.get("name") ?? "");
   const parsed = groupNameSchema.safeParse(name);
@@ -229,7 +244,7 @@ export async function renameGroupAction(
     return { name, error: parsed.error.issues[0].message };
   }
 
-  const result = await renameGroup(id, parsed.data);
+  const result = await renameGroup(userId, id, parsed.data);
   if (result === "duplicate") {
     return { name, error: "Такая группа уже есть" };
   }
@@ -245,7 +260,8 @@ export async function renameGroupAction(
 // No redirect: the "Groups" page redraws without the group. A group that is
 // already gone (deleted in another tab) is not an error: the page just refreshes
 export async function deleteGroupAction(groupId: number): Promise<void> {
+  const userId = await requireUserId();
   const id = groupIdSchema.parse(groupId);
-  await deleteGroup(id);
+  await deleteGroup(userId, id);
   refreshAllPages();
 }

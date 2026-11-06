@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { eq } from "drizzle-orm";
 
@@ -18,7 +18,15 @@ import {
   createContactWithInterval,
   createGroup,
   formData,
+  signInAs,
 } from "../../test/helpers";
+
+// The actions work for the logged-in user: here it is the owner of the data
+let owner: string;
+
+beforeEach(async () => {
+  owner = await signInAs("owner@example.com");
+});
 
 function setGroup(contactId: number, groupId: number, member: boolean) {
   return setContactGroupAction(
@@ -37,32 +45,32 @@ function rename(groupId: number, name: string) {
 }
 
 async function groupNames() {
-  return (await listGroups()).map((group) => group.name);
+  return (await listGroups(owner)).map((group) => group.name);
 }
 
 describe("Отметка группы одним нажатием", () => {
   it("Добавил в группу", async () => {
-    const anna = await createContact("Анна");
-    const family = await createGroup("Семья");
+    const anna = await createContact(owner, "Анна");
+    const family = await createGroup(owner, "Семья");
 
     expect(await setGroup(anna, family, true)).toEqual({});
 
-    expect(await listContactGroupIds(anna)).toEqual([family]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([family]);
     expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("Убрал из группы", async () => {
-    const anna = await createContact("Анна");
-    const family = await createGroup("Семья");
+    const anna = await createContact(owner, "Анна");
+    const family = await createGroup(owner, "Семья");
     await addToGroup(anna, family);
 
     expect(await setGroup(anna, family, false)).toEqual({});
 
-    expect(await listContactGroupIds(anna)).toEqual([]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([]);
   });
 
   it("Контакт удалили в другой вкладке", async () => {
-    const family = await createGroup("Семья");
+    const family = await createGroup(owner, "Семья");
 
     expect(await setGroup(987654, family, true)).toEqual({
       error: "Контакт не найден",
@@ -72,21 +80,21 @@ describe("Отметка группы одним нажатием", () => {
   });
 
   it("Группу удалили в другой вкладке", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
 
     // The id of a group that is gone
     expect(await setGroup(anna, 987654, true)).toEqual({
       error: "Группа не найдена",
     });
 
-    expect(await listContactGroupIds(anna)).toEqual([]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([]);
     // The card is refreshed, so the pill of the deleted group disappears
     expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("Неверная отметка из формы не сохраняется", async () => {
-    const anna = await createContact("Анна");
-    const family = await createGroup("Семья");
+    const anna = await createContact(owner, "Анна");
+    const family = await createGroup(owner, "Семья");
 
     const result = await setContactGroupAction(
       anna,
@@ -101,20 +109,20 @@ describe("Отметка группы одним нажатием", () => {
 
 describe("Новая группа из карточки", () => {
   it("Создал группу", async () => {
-    const anna = await createContact("Анна");
-    const boris = await createContact("Борис");
+    const anna = await createContact(owner, "Анна");
+    const boris = await createContact(owner, "Борис");
 
     expect(await createGroupFor(anna, "Дача")).toEqual({ saved: true });
 
-    const [dacha] = await listGroups();
+    const [dacha] = await listGroups(owner);
     expect(dacha.name).toBe("Дача");
-    expect(await listContactGroupIds(anna)).toEqual([dacha.id]);
-    expect(await listContactGroupIds(boris)).toEqual([]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([dacha.id]);
+    expect(await listContactGroupIds(owner, boris)).toEqual([]);
     expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("Двойное нажатие «Создать»", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
 
     const results = await Promise.all([
       createGroupFor(anna, "Дача"),
@@ -138,7 +146,7 @@ describe("Новая группа из карточки", () => {
 
 describe("Правила названия группы", () => {
   it("Пустое название", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
 
     expect(await createGroupFor(anna, "   ")).toEqual({
       name: "   ",
@@ -149,7 +157,7 @@ describe("Правила названия группы", () => {
   });
 
   it("Слишком длинное название", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
     const longName = "а".repeat(51);
 
     expect(await createGroupFor(anna, longName)).toEqual({
@@ -161,13 +169,13 @@ describe("Правила названия группы", () => {
   });
 
   it("Название из 50 символов подходит", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
 
     expect(await createGroupFor(anna, "а".repeat(50))).toEqual({ saved: true });
   });
 
   it("Пробелы по краям", async () => {
-    const anna = await createContact("Анна");
+    const anna = await createContact(owner, "Анна");
 
     expect(await createGroupFor(anna, "  Дача  ")).toEqual({ saved: true });
 
@@ -177,36 +185,36 @@ describe("Правила названия группы", () => {
 
 describe("Название группы не повторяется", () => {
   it("Создал группу с уже занятым названием", async () => {
-    const family = await createGroup("Семья");
-    const boris = await createContact("Борис");
+    const family = await createGroup(owner, "Семья");
+    const boris = await createContact(owner, "Борис");
 
     expect(await createGroupFor(boris, "семья")).toEqual({ saved: true });
 
     expect(await groupNames()).toEqual(["Семья"]);
-    expect(await listContactGroupIds(boris)).toEqual([family]);
+    expect(await listContactGroupIds(owner, boris)).toEqual([family]);
   });
 });
 
 describe("Переименование группы", () => {
   it("Переименовал", async () => {
-    const anna = await createContact("Анна");
-    const boris = await createContact("Борис");
-    const dacha = await createGroup("Дача");
+    const anna = await createContact(owner, "Анна");
+    const boris = await createContact(owner, "Борис");
+    const dacha = await createGroup(owner, "Дача");
     await addToGroup(anna, dacha);
     await addToGroup(boris, dacha);
 
     expect(await rename(dacha, "Дача в Лесном")).toEqual({ saved: true });
 
     // The group is the same one: same id, same people
-    expect(await listGroups()).toEqual([
+    expect(await listGroups(owner)).toEqual([
       { id: dacha, name: "Дача в Лесном", contactCount: 2 },
     ]);
-    expect(await listContactGroupIds(anna)).toEqual([dacha]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([dacha]);
     expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("Пробелы по краям при переименовании", async () => {
-    const dacha = await createGroup("Дача");
+    const dacha = await createGroup(owner, "Дача");
 
     expect(await rename(dacha, "  Сад  ")).toEqual({ saved: true });
 
@@ -214,8 +222,8 @@ describe("Переименование группы", () => {
   });
 
   it("Название занято другой группой", async () => {
-    await createGroup("Семья");
-    const friends = await createGroup("Друзья");
+    await createGroup(owner, "Семья");
+    const friends = await createGroup(owner, "Друзья");
 
     expect(await rename(friends, "семья")).toEqual({
       name: "семья",
@@ -226,7 +234,7 @@ describe("Переименование группы", () => {
   });
 
   it("Поменял только регистр", async () => {
-    const family = await createGroup("семья");
+    const family = await createGroup(owner, "семья");
 
     expect(await rename(family, "Семья")).toEqual({ saved: true });
 
@@ -234,7 +242,7 @@ describe("Переименование группы", () => {
   });
 
   it("Оставил то же название", async () => {
-    const family = await createGroup("Семья");
+    const family = await createGroup(owner, "Семья");
 
     expect(await rename(family, "Семья")).toEqual({ saved: true });
 
@@ -242,7 +250,7 @@ describe("Переименование группы", () => {
   });
 
   it("Пустое название при переименовании", async () => {
-    const family = await createGroup("Семья");
+    const family = await createGroup(owner, "Семья");
 
     expect(await rename(family, "  ")).toEqual({
       name: "  ",
@@ -253,7 +261,7 @@ describe("Переименование группы", () => {
   });
 
   it("Слишком длинное название при переименовании", async () => {
-    const family = await createGroup("Семья");
+    const family = await createGroup(owner, "Семья");
 
     expect((await rename(family, "а".repeat(51))).error).toBe(
       "Слишком длинно: не больше 50 символов",
@@ -263,7 +271,7 @@ describe("Переименование группы", () => {
   });
 
   it("Группу удалили в другой вкладке", async () => {
-    const dacha = await createGroup("Дача");
+    const dacha = await createGroup(owner, "Дача");
     await db.delete(groups).where(eq(groups.id, dacha));
 
     expect(await rename(dacha, "Сад")).toEqual({
@@ -277,14 +285,14 @@ describe("Переименование группы", () => {
 
 describe("Удаление группы", () => {
   it("Удалил группу", async () => {
-    const anna = await createContactWithInterval("Анна", {
+    const anna = await createContactWithInterval(owner, "Анна", {
       interval: "month",
       setDaysAgo: 10,
       noteDaysAgo: [5],
     });
-    const boris = await createContact("Борис");
-    const dacha = await createGroup("Дача");
-    const family = await createGroup("Семья");
+    const boris = await createContact(owner, "Борис");
+    const dacha = await createGroup(owner, "Дача");
+    const family = await createGroup(owner, "Семья");
     await addToGroup(anna, dacha);
     await addToGroup(boris, dacha);
     await addToGroup(anna, family);
@@ -303,13 +311,13 @@ describe("Удаление группы", () => {
       .where(eq(contacts.id, anna));
     expect(annaRow.touchInterval).toBe("month");
     expect(annaRow.touchIntervalSetAt).not.toBeNull();
-    expect(await listContactGroupIds(anna)).toEqual([family]);
-    expect(await listContactGroupIds(boris)).toEqual([]);
+    expect(await listContactGroupIds(owner, anna)).toEqual([family]);
+    expect(await listContactGroupIds(owner, boris)).toEqual([]);
     expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("Группу уже удалили в другой вкладке", async () => {
-    const dacha = await createGroup("Дача");
+    const dacha = await createGroup(owner, "Дача");
     await db.delete(groups).where(eq(groups.id, dacha));
 
     // No error: the page just shows the list without this group

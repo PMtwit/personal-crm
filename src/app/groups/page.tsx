@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listGroups } from "@/lib/data";
 import { contactsCount } from "@/lib/format";
 import { homeHref } from "@/lib/groups";
+import { requireUserId } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Группы",
@@ -29,7 +30,7 @@ export default function GroupsPage() {
 }
 
 async function GroupsList() {
-  const groups = await listGroups();
+  const groups = await listGroups(await requireUserId());
 
   if (groups.length === 0) {
     return (

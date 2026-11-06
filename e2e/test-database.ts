@@ -1,7 +1,13 @@
 import { loadEnvConfig } from "@next/env";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { Client, Pool } from "pg";
+import { Client } from "pg";
+
+import { runMigrations } from "../scripts/run-migrations.ts";
+
+// The owner of the data that a test database already had when login came
+export const TEST_OWNER_EMAIL = "owner@example.com";
+
+// For SQL that puts data straight into the test database: the owner's id
+export const OWNER_ID_SQL = `(select id from users where email = '${TEST_OWNER_EMAIL}')`;
 
 // Tests use their own databases next to the main one, so they never touch
 // real contacts. The name is "<name>_<suffix>" and always ends with "_test":
@@ -57,10 +63,7 @@ export async function prepareTestDatabase(testUrl: string): Promise<void> {
     await admin.end();
   }
 
-  const pool = new Pool({ connectionString: testUrl });
-  try {
-    await migrate(drizzle({ client: pool }), { migrationsFolder: "drizzle" });
-  } finally {
-    await pool.end();
-  }
+  // Test databases keep rows between runs: if they were made before login,
+  // that data goes to the test owner
+  await runMigrations(testUrl, TEST_OWNER_EMAIL);
 }

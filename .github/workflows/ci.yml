@@ -54,6 +54,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Catches the login letters: the tests read them from here (port 8025).
+      # The app sends to port 1025 (SMTP_URL has the same default in the test configs)
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -78,6 +90,18 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d crm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # Catches the login letters: the tests read them from here (port 8025).
+      # The app sends to port 1025 (SMTP_URL has the same default in the test configs)
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10

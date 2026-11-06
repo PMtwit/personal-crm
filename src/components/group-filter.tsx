@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { listGroups } from "@/lib/data";
 import { homeHref, resolveSelectedGroup } from "@/lib/groups";
+import { requireUserId } from "@/lib/session";
 
 const pillClasses =
   "inline-flex h-10 shrink-0 items-center rounded-full border border-border bg-background px-4 text-chip font-medium whitespace-nowrap transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
@@ -20,7 +21,7 @@ export async function GroupFilter({
   const { q, group: groupParam } = await searchParams;
   const query = (Array.isArray(q) ? q[0] : q)?.trim() ?? "";
 
-  const groups = await listGroups();
+  const groups = await listGroups(await requireUserId());
   if (groups.length === 0) {
     return null;
   }

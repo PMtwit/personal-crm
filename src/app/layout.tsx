@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Onest, Unbounded } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
+
+import { UserMenu } from "@/components/user-menu";
 
 import "./globals.css";
 
@@ -47,10 +50,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <header>
-          <div className="mx-auto flex h-16 w-full max-w-3xl items-center px-4 sm:h-20">
+          <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between gap-3 px-4 sm:h-20">
             <Link
               href="/"
-              className="flex items-center gap-2.5 rounded-logo focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-3"
+              className="flex shrink-0 items-center gap-2.5 rounded-logo focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-3"
             >
               <span
                 aria-hidden
@@ -62,6 +65,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Личная CRM
               </span>
             </Link>
+            {/* The person's email and "Выйти", only when logged in */}
+            <Suspense fallback={null}>
+              <UserMenu />
+            </Suspense>
           </div>
         </header>
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-2 pb-10 sm:pb-16">

@@ -13,9 +13,15 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
-# The build loads the database module but never connects to it:
-# the real address comes from the server's .env when the container starts
-RUN DOCKER_BUILD=1 DATABASE_URL=postgres://build@localhost/build pnpm build
+# The build loads the database and login modules but never connects to anything:
+# the real values (database address, login secret and address) come from the
+# server's .env when the container starts. The secret here is only a placeholder
+# of the length the login library wants
+RUN DOCKER_BUILD=1 \
+    DATABASE_URL=postgres://build@localhost/build \
+    BETTER_AUTH_SECRET=build-time-placeholder-not-a-real-secret \
+    BETTER_AUTH_URL=http://localhost:3000 \
+    pnpm build
 # The server has its own bundled copy of drizzle-orm; the scripts need the package
 RUN cp -RL node_modules/drizzle-orm /tmp/drizzle-orm
 
@@ -32,7 +38,7 @@ COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build /tmp/drizzle-orm ./node_modules/drizzle-orm
 COPY drizzle ./drizzle
 COPY src/db/schema.ts ./src/db/
-COPY scripts/migrate.mts scripts/seed.mts scripts/seed-data.ts ./scripts/
+COPY scripts/migrate.mts scripts/run-migrations.ts scripts/seed.mts scripts/seed-database.ts scripts/seed-data.ts ./scripts/
 USER node
 EXPOSE 3000
 CMD ["node", "server.js"]

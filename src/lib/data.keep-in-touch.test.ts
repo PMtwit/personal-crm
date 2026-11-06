@@ -1,5 +1,5 @@
 import { eq, sql, type SQL } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "@/db";
 import { contacts, notes } from "@/db/schema";
@@ -9,6 +9,14 @@ import {
   updateTouchInterval,
 } from "@/lib/data";
 import type { TouchInterval } from "@/lib/keep-in-touch";
+
+import { createOwner } from "../../test/helpers";
+
+let owner: string;
+
+beforeEach(async () => {
+  owner = await createOwner();
+});
 
 // The due date is counted in SQL, so these tests run on the real test database.
 // Exact dates do not depend on today: dueAt is only the last note plus the
@@ -31,6 +39,7 @@ async function contactWith(
   const [row] = await db
     .insert(contacts)
     .values({
+      userId: owner,
       name: "Анна",
       touchInterval: interval,
       touchIntervalSetAt: setAt as Date,
@@ -50,7 +59,7 @@ async function noteAt(contactId: number, createdAt: Date | SQL<Date>) {
 async function dueAtAfterNote(interval: TouchInterval, noteDate: string) {
   const id = await contactWith(interval);
   await noteAt(id, utcNoon(noteDate));
-  return (await getTouchStatus(id)).dueAt;
+  return (await getTouchStatus(owner, id)).dueAt;
 }
 
 // A contact "once a week" whose due date is the given time away from now:
@@ -65,7 +74,7 @@ async function overdueBy(interval: string): Promise<number> {
 }
 
 async function isInDueBlock(id: number): Promise<boolean> {
-  return (await listDueContacts()).some((contact) => contact.id === id);
+  return (await listDueContacts(owner)).some((contact) => contact.id === id);
 }
 
 // Whether a moment is within a few seconds of "now + days" by the database's clock
@@ -110,7 +119,9 @@ describe("Срок отсчитывается от последней замет
     await noteAt(id, utcNoon("2026-03-05"));
     await noteAt(id, utcNoon("2026-01-10"));
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2026-04-05"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2026-04-05"),
+    );
   });
 
   it("новая заметка запускает отсчёт заново", async () => {
@@ -120,7 +131,7 @@ describe("Срок отсчитывается от последней замет
     await noteAt(id, sql<Date>`now()`);
 
     expect(await isInDueBlock(id)).toBe(false);
-    const { dueAt } = await getTouchStatus(id);
+    const { dueAt } = await getTouchStatus(owner, id);
     expect(await isAboutDaysFromNow(dueAt, 7)).toBe(true);
   });
 
@@ -128,7 +139,9 @@ describe("Срок отсчитывается от последней замет
     const id = await contactWith("month", utcNoon("2026-06-01"));
     await noteAt(id, utcNoon("2026-01-10"));
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2026-02-10"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2026-02-10"),
+    );
   });
 });
 
@@ -152,7 +165,7 @@ describe("Даты по московскому времени", () => {
     const id = await contactWith(interval);
     await noteAt(id, new Date(`${note}:00+03:00`));
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
       new Date(`${due}:00+03:00`),
     );
   });
@@ -163,7 +176,7 @@ describe("Даты по московскому времени", () => {
       new Date("2026-03-01T01:00:00+03:00"),
     );
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
       new Date("2026-04-01T01:00:00+03:00"),
     );
   });
@@ -172,7 +185,7 @@ describe("Даты по московскому времени", () => {
     const id = await contactWith("month");
     await noteAt(id, new Date("2026-03-01T01:00:00+03:00"));
 
-    const [due] = await listDueContacts();
+    const [due] = await listDueContacts(owner);
 
     expect(due).toMatchObject({
       id,
@@ -185,24 +198,28 @@ describe("Без заметок срок отсчитывается от выб�
   it("выбрал «Раз в месяц» 1 октября → срок 1 ноября", async () => {
     const id = await contactWith("month", utcNoon("2026-10-01"));
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2026-11-01"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2026-11-01"),
+    );
   });
 
   it("смена частоты запускает отсчёт заново от момента смены", async () => {
     const id = await contactWith("year", ago("19 days"));
 
-    await updateTouchInterval(id, "week");
+    await updateTouchInterval(owner, id, "week");
 
-    const { dueAt } = await getTouchStatus(id);
+    const { dueAt } = await getTouchStatus(owner, id);
     expect(await isAboutDaysFromNow(dueAt, 7)).toBe(true);
   });
 
   it("повторный выбор той же частоты отсчёт не сбрасывает", async () => {
     const id = await contactWith("week", utcNoon("2026-01-10"));
 
-    await updateTouchInterval(id, "week");
+    await updateTouchInterval(owner, id, "week");
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2026-01-17"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2026-01-17"),
+    );
   });
 });
 
@@ -210,26 +227,30 @@ describe("Смена частоты у контакта с заметками", 
   it("срок пересчитывается от той же заметки, отсчёт не сбрасывается", async () => {
     const id = await contactWith("year");
     await noteAt(id, utcNoon("2026-01-10"));
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2027-01-10"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2027-01-10"),
+    );
 
-    await updateTouchInterval(id, "month");
+    await updateTouchInterval(owner, id, "month");
 
-    expect((await getTouchStatus(id)).dueAt).toEqual(utcNoon("2026-02-10"));
+    expect((await getTouchStatus(owner, id)).dueAt).toEqual(
+      utcNoon("2026-02-10"),
+    );
   });
 
   it("заметке 3 месяца, выбрал «Раз в месяц» → контакт сразу в блоке", async () => {
     const [{ id }] = await db
       .insert(contacts)
-      .values({ name: "Анна" })
+      .values({ userId: owner, name: "Анна" })
       .returning({ id: contacts.id });
     await noteAt(id, ago("3 months"));
     expect(await isInDueBlock(id)).toBe(false);
 
-    await updateTouchInterval(id, "month");
+    await updateTouchInterval(owner, id, "month");
 
     expect(await isInDueBlock(id)).toBe(true);
     // About two months past the due date: 58 to 62 days, whatever the months
-    const { overdueDays } = await getTouchStatus(id);
+    const { overdueDays } = await getTouchStatus(owner, id);
     expect(overdueDays).toBeGreaterThanOrEqual(58);
     expect(overdueDays).toBeLessThanOrEqual(62);
   });
@@ -237,9 +258,9 @@ describe("Смена частоты у контакта с заметками", 
   it("убрал частоту → срока нет, контакта нет в блоке, заметки на месте", async () => {
     const id = await overdueBy("15 days");
 
-    await updateTouchInterval(id, null);
+    await updateTouchInterval(owner, id, null);
 
-    expect(await getTouchStatus(id)).toEqual({
+    expect(await getTouchStatus(owner, id)).toEqual({
       touchInterval: null,
       dueAt: null,
       overdueDays: 0,
@@ -255,11 +276,11 @@ describe("Граница: когда срок наступил и сколько
   it("контакт без частоты: срока нет", async () => {
     const [{ id }] = await db
       .insert(contacts)
-      .values({ name: "Анна" })
+      .values({ userId: owner, name: "Анна" })
       .returning({ id: contacts.id });
     await noteAt(id, ago("400 days"));
 
-    expect(await getTouchStatus(id)).toEqual({
+    expect(await getTouchStatus(owner, id)).toEqual({
       touchInterval: null,
       dueAt: null,
       overdueDays: 0,
@@ -270,7 +291,7 @@ describe("Граница: когда срок наступил и сколько
   it("за минуту до срока: срок ещё впереди, контакта нет в блоке", async () => {
     const id = await overdueBy("-1 minute");
 
-    expect((await getTouchStatus(id)).overdueDays).toBeLessThan(0);
+    expect((await getTouchStatus(owner, id)).overdueDays).toBeLessThan(0);
     expect(await isInDueBlock(id)).toBe(false);
   });
 
@@ -285,8 +306,8 @@ describe("Граница: когда срок наступил и сколько
     async (_case, passed, days) => {
       const id = await overdueBy(passed);
 
-      expect((await getTouchStatus(id)).overdueDays).toBe(days);
-      const [due] = await listDueContacts();
+      expect((await getTouchStatus(owner, id)).overdueDays).toBe(days);
+      const [due] = await listDueContacts(owner);
       expect(due).toMatchObject({ id, overdueDays: days });
     },
   );
@@ -294,8 +315,8 @@ describe("Граница: когда срок наступил и сколько
   it("блок и карточка называют один и тот же срок", async () => {
     const id = await overdueBy("15 days 1 minute");
 
-    const [due] = await listDueContacts();
-    const card = await getTouchStatus(id);
+    const [due] = await listDueContacts(owner);
+    const card = await getTouchStatus(owner, id);
 
     expect(due.dueAt).toEqual(card.dueAt);
     expect(due.touchInterval).toBe(card.touchInterval);
