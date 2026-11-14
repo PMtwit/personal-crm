@@ -24,3 +24,40 @@ describe("test database", () => {
     expect(rows).toHaveLength(0);
   });
 });
+
+describe("connection pool", () => {
+  // Stuck requests may take every connection. A query must not wait for a free
+  // one forever: after 10 seconds it fails, and the app keeps going by itself
+  // once the connections come back
+  it("fails a query after 10 seconds when every connection is busy", async () => {
+    const pool = db.$client;
+    const busy = await Promise.all(
+      Array.from({ length: pool.options.max }, () => pool.connect()),
+    );
+    // The connections come back whatever happens: the next tests need them
+    const releaseAll = () => {
+      for (const client of busy.splice(0)) {
+        client.release();
+      }
+    };
+    const guard = setTimeout(releaseAll, 15_000);
+    try {
+      const started = Date.now();
+      const failure = await db.execute(sql`select 1`).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      const waited = Date.now() - started;
+
+      expect(failure, "the query got no error").toBeInstanceOf(Error);
+      expect((failure as Error).message).toContain(
+        "timeout exceeded when trying to connect",
+      );
+      expect(waited).toBeGreaterThanOrEqual(9_500);
+      expect(waited).toBeLessThan(12_000);
+    } finally {
+      clearTimeout(guard);
+      releaseAll();
+    }
+  }, 20_000);
+});

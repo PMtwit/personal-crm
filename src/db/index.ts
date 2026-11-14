@@ -18,7 +18,15 @@ if (!process.env.DATABASE_URL) {
 const globalForDb = globalThis as unknown as { pool?: Pool };
 
 const pool =
-  globalForDb.pool ?? new Pool({ connectionString: process.env.DATABASE_URL });
+  globalForDb.pool ??
+  new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // A query waits for a free connection (or for the database to answer the
+    // first connect) no longer than 10 seconds, then fails. Without it, when
+    // every connection is taken, all later queries would wait forever and the
+    // app would not come back by itself
+    connectionTimeoutMillis: 10_000,
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.pool = pool;
