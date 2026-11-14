@@ -115,13 +115,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Tests run in Google Chrome, which the GitHub runner already has
       - run: pnpm test:e2e
-      # Traces of failed tests: open with "pnpm exec playwright show-trace"
+      # Traces of failed tests: open with "pnpm exec playwright show-trace".
+      # Kept 30 days: a rare failure is still there when someone gets to it
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: test-results/
-          retention-days: 7
+          retention-days: 30
 
   image:
     name: Docker image build
