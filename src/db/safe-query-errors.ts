@@ -4,6 +4,10 @@ import { PgPreparedQuery } from "drizzle-orm/pg-core";
 // objects. Its text and "detail" are not: Postgres quotes values there
 const SAFE_FIELDS = ["code", "table", "column", "constraint"] as const;
 
+// The pool's own error when no connection came free in time (db/index.ts). Its
+// text is fixed and has no values, and the log must say why the query failed
+const POOL_TIMEOUT = "timeout exceeded when trying to connect";
+
 function safeQueryError(query: string, failure: unknown): Error {
   const source = failure as Record<string, unknown>;
   const fields = Object.fromEntries(
@@ -11,9 +15,12 @@ function safeQueryError(query: string, failure: unknown): Error {
       typeof source[field] === "string" ? [[field, source[field]]] : [],
     ),
   );
-  const reason = Object.entries(fields)
-    .map(([field, value]) => `${field}: ${value}`)
-    .join(", ");
+  const reason =
+    failure instanceof Error && failure.message === POOL_TIMEOUT
+      ? POOL_TIMEOUT
+      : Object.entries(fields)
+          .map(([field, value]) => `${field}: ${value}`)
+          .join(", ");
   // The query's text has only placeholders ($1, $2): the values travel apart
   return Object.assign(new Error(`Failed query: ${query}\n${reason}`), fields);
 }
