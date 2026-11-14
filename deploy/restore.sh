@@ -2,6 +2,7 @@
 # Replaces the production database with a backup file. Only a person runs it,
 # by hand on the server (see README). It never changes the app version and runs
 # no migrations; if a step fails, it stops and rolls nothing back by itself.
+# Prod only: the test stand gets a fresh copy of prod with refresh-staging-db.sh
 #
 #   sudo -u deploy /srv/personal-crm/restore.sh <backup file>
 set -euo pipefail
@@ -20,6 +21,11 @@ backup_file="$(realpath "$1")"
 cd "$(dirname "$0")"
 . ./common.sh
 
+if [ "$PWD" = "$staging_dir" ]; then
+  echo "restore.sh is for prod only. To load a fresh copy of prod into the test stand: $staging_dir/refresh-staging-db.sh" >&2
+  exit 1
+fi
+use_environment prod
 check_env
 take_lock
 
@@ -91,7 +97,7 @@ compose stop app </dev/null
 
 echo "==> Recreating the database"
 step="recreating the database"
-compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE \"$POSTGRES_DB\" WITH (FORCE)" -c "CREATE DATABASE \"$POSTGRES_DB\""' </dev/null
+recreate_database
 
 echo "==> Loading the backup"
 step="loading the backup; the app stays stopped"

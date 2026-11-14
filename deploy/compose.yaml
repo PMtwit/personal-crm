@@ -1,5 +1,8 @@
-# Production on the server: project "prod", files in /srv/personal-crm.
-# Run through deploy.sh: it sets APP_TAG, the image tag (commit SHA) to run.
+# One file for both environments on the server: prod (project "prod", files in
+# /srv/personal-crm) and the test stand (project "staging", /srv/personal-crm-staging).
+# Run through the scripts in this folder: use_environment in common.sh sets the
+# environment's address, port and memory limits, deploy.sh sets APP_TAG, the
+# image tag (commit SHA) to run. Each environment's own .env lies next to this file.
 
 x-logging: &logging
   driver: json-file
@@ -9,13 +12,17 @@ x-logging: &logging
 
 x-app: &app
   image: ghcr.io/pmtwit/personal-crm:${APP_TAG:?run deploy.sh with the image tag}
+  # 0 means no limit (prod); the test stand has one, see common.sh
+  mem_limit: ${APP_MEMORY_LIMIT:?run the scripts in this folder, they set the environment}
   environment:
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     # Login. The values live in the server's .env. Without one of them compose
     # stops on the first command of deploy.sh, before the backup: nothing changes
     # and the version that runs now keeps running
     BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (openssl rand -hex 32)}
-    BETTER_AUTH_URL: https://app.pmcrm.site
+    # The address of this environment: the link in a login letter leads here,
+    # so a link asked for on the test stand opens the test stand
+    BETTER_AUTH_URL: ${APP_URL:?run the scripts in this folder, they set the environment}
     # Where the login letters go: Resend's SMTP, see README
     SMTP_URL: ${SMTP_URL:?set SMTP_URL in .env (see README)}
     # The owner of the data that existed before login: the migration gives it
@@ -33,11 +40,13 @@ services:
     # Postgres quotes a refused row in its log ("Failing row contains ..."):
     # terse leaves that detail out, so people's data stays out of the log
     command: ["postgres", "-c", "log_error_verbosity=terse"]
+    mem_limit: ${DB_MEMORY_LIMIT:?run the scripts in this folder, they set the environment}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
-    # No published ports: only the app and the migrations reach it, inside this project
+    # No published ports: only the app and the migrations reach it, inside this
+    # project. Each project has its own volume: prod_pgdata, staging_pgdata
     # Since postgres:18 the data directory lives under /var/lib/postgresql
     volumes:
       - pgdata:/var/lib/postgresql
@@ -58,9 +67,10 @@ services:
   app:
     <<: *app
     restart: unless-stopped
-    # Localhost only: the outside world reaches the app through nginx
+    # Localhost only: the outside world reaches the app through nginx.
+    # Each environment has its own port: prod 3000, staging 3001
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${APP_PORT:?run the scripts in this folder, they set the environment}:3000"
     healthcheck:
       test:
         [
