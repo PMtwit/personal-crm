@@ -1,11 +1,15 @@
 name: Deploy
 
-# Every push to main: build the image, push it to GHCR, deploy it to the server
+# Every push to main: build the image, push it to GHCR, deploy it to both
+# environments on the server: the test stand (staging, test-app.pmcrm.site) and
+# prod (app.pmcrm.site). Both get the same image; for now prod does not wait for
+# the test stand
 on:
   push:
     branches: [main]
 
-# One deploy at a time: a newer push waits for the running one to finish
+# One run at a time, in the order of the pushes: an older version never lands
+# after a newer one. A newer push waits for the running one to finish
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -13,7 +17,6 @@ concurrency:
 env:
   IMAGE: ghcr.io/pmtwit/personal-crm
   SERVER: deploy@217.180.0.147
-  APP_DIR: /srv/personal-crm
 
 jobs:
   build:
@@ -41,12 +44,37 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
+    name: Deploy ${{ matrix.environment }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
       packages: read
+    strategy:
+      # A failed deploy of one environment does not stop the other
+      fail-fast: false
+      matrix:
+        include:
+          - environment: staging
+            app_dir: /srv/personal-crm-staging
+            url: https://test-app.pmcrm.site
+          - environment: prod
+            app_dir: /srv/personal-crm
+            url: https://app.pmcrm.site
+    # One deploy per environment at a time, whichever workflow starts it: a
+    # second one waits. The server has its own lock in each environment's folder
+    concurrency:
+      group: deploy-${{ matrix.environment }}
+      cancel-in-progress: false
+    # GitHub keeps the history of deploys of each environment (Deployments)
+    environment:
+      name: ${{ matrix.environment }}
+      url: ${{ matrix.url }}
+    env:
+      ENVIRONMENT: ${{ matrix.environment }}
+      APP_DIR: ${{ matrix.app_dir }}
+      APP_URL: ${{ matrix.url }}
     steps:
       - uses: actions/checkout@v7
 
@@ -60,19 +88,21 @@ jobs:
           # The server's host key: SSH refuses to talk to any other machine
           echo "217.180.0.147 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvufsWQh68fUmn7JyKKdConhhK4KLAK0Mzh9fXajgi2" > ~/.ssh/known_hosts
 
-      # Everything in deploy/, so a new script arrives by itself. A glob, not the
-      # folder itself: the folder on the server keeps its own permissions
+      # Everything in deploy/ into this environment's folder, so a new script
+      # arrives by itself. A glob, not the folder itself: the folder on the
+      # server keeps its own permissions
       - name: Copy deploy scripts
         run: scp -rp deploy/* "$SERVER:$APP_DIR/"
 
-      # Backup, migrations, the new app, smoke check of /health. The registry
-      # token goes on stdin and only lives until this job ends
+      # Backup (prod only), migrations, the new app, smoke check of /health.
+      # The registry token goes on stdin and only lives until this job ends
       - name: Deploy
         env:
           TAG: ${{ github.sha }}
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$REGISTRY_TOKEN" | ssh "$SERVER" "$APP_DIR/deploy.sh $TAG $REGISTRY_USER"
+        run: printf '%s' "$REGISTRY_TOKEN" | ssh "$SERVER" "$APP_DIR/deploy.sh $ENVIRONMENT $TAG $REGISTRY_USER"
 
+      # On the test stand /health is the one address open without its password
       - name: Smoke check through nginx
-        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://app.pmcrm.site/health
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$APP_URL/health"
