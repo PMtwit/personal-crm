@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { type AddressInfo, createServer, type Socket } from "node:net";
 import { describe, expect, it } from "vitest";
 
 import { db } from "@/db";
@@ -264,4 +265,87 @@ describe("Не больше 3 писем на почту за 10 минут", ()
       await db.select().from(signInEmails).where(eq(signInEmails.email, email)),
     ).toHaveLength(3);
   });
+});
+
+// A mail server that takes connections and never answers: the letters hang
+// in sending, as with a slow or broken mail service
+async function silentMailServer() {
+  const sockets = new Set<Socket>();
+  const server = createServer((socket) => sockets.add(socket));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `smtp://127.0.0.1:${port}`,
+    // Waits until this many letters are being sent at once
+    async sending(letters: number) {
+      const deadline = Date.now() + 10_000;
+      while (sockets.size < letters) {
+        if (Date.now() > deadline) {
+          throw new Error(
+            `Only ${sockets.size} of ${letters} letters reached the mail server`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    },
+    // Drops every connection: the letters being sent fail
+    async close() {
+      for (const socket of sockets) {
+        socket.destroy();
+      }
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+}
+
+// The app has a few connections to the database for everything. Many login
+// requests at once, or a slow mail service, must not take them all
+describe("Одновременные запросы не вешают приложение", () => {
+  it("Много запросов на разные почты одновременно", async () => {
+    const emails = Array.from({ length: 15 }, () => address());
+
+    const answers = await Promise.all(emails.map(request));
+
+    expect(answers).toEqual(emails.map((email) => ({ sentTo: email })));
+    expect(await lettersTo(emails[0])).toHaveLength(1);
+  }, 15_000);
+
+  it("Много запросов на одну почту одновременно", async () => {
+    const email = address();
+
+    const answers = await Promise.all(
+      Array.from({ length: 12 }, () => request(email)),
+    );
+
+    expect(answers.filter((answer) => "sentTo" in answer)).toHaveLength(3);
+    expect(answers.filter((answer) => "error" in answer)).toEqual(
+      Array.from({ length: 9 }, () => ({ error: "rate-limited" })),
+    );
+    expect(await lettersTo(email)).toHaveLength(3);
+  }, 15_000);
+
+  it("Почта отвечает медленно - база свободна", async () => {
+    const emails = Array.from({ length: 12 }, () => address());
+    const mail = await silentMailServer();
+    const working = process.env.SMTP_URL;
+    process.env.SMTP_URL = mail.url;
+
+    const answers = Promise.all(emails.map(request));
+    try {
+      await mail.sending(emails.length);
+
+      // While every letter hangs, the rest of the app gets the database at once
+      const started = Date.now();
+      await db.select().from(users).limit(1);
+      expect(Date.now() - started).toBeLessThan(2_000);
+    } finally {
+      process.env.SMTP_URL = working;
+      await mail.close();
+    }
+
+    // The letters failed: nothing is counted and no link is left
+    expect(await answers).toEqual(emails.map(() => ({ error: "send-failed" })));
+    expect(await db.select().from(signInEmails)).toEqual([]);
+    expect(await db.select().from(verifications)).toEqual([]);
+  }, 20_000);
 });

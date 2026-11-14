@@ -7,7 +7,7 @@ import { magicLink } from "better-auth/plugins";
 
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { sendSignInEmail } from "@/lib/mail";
+import { deliverSignInLink, hashLinkToken } from "@/lib/sign-in-link";
 
 const DAY_SECONDS = 24 * 60 * 60;
 
@@ -39,9 +39,12 @@ export const auth = betterAuth({
     magicLink({
       expiresIn: 15 * 60,
       // The database keeps a hash of the link, not the link: a leaked copy of
-      // the database gives no working links
-      storeToken: "hashed",
-      sendMagicLink: async ({ email, url }) => sendSignInEmail(email, url),
+      // the database gives no working links. The hash is ours (the same as the
+      // library's "hashed"): deliverSignInLink finds the row of its link by it
+      storeToken: { type: "custom-hasher", hash: hashLinkToken },
+      // Sends the letter, then cancels the older links of this email; if the
+      // letter was not sent, drops the new link (sign-in-link.ts)
+      sendMagicLink: deliverSignInLink,
     }),
     // Must be the last plugin: it passes the library's cookies to Next.js
     nextCookies(),
