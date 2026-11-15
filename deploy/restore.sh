@@ -48,7 +48,7 @@ database="$(compose exec -T db sh -c 'printf %s "$POSTGRES_DB"' </dev/null)"
 
 # The version in a backup's name tells which app version its tables belong to
 backup_version=""
-if [[ "$(basename "$backup_file")" =~ ^before-(deploy|restore)_[0-9_-]+_([^_]+)\.dump$ ]]; then
+if [[ "$(basename "$backup_file")" =~ ^(before-deploy|before-restore|daily)_[0-9_-]+_([^_]+)\.dump$ ]]; then
   backup_version="${BASH_REMATCH[2]}"
 fi
 

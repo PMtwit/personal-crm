@@ -1,0 +1,13 @@
+# Starts personal-crm-backup.service every day at 03:00 Moscow time. The server
+# clock is in UTC: the time zone is part of the schedule. Installed by hand into
+# /etc/systemd/system, see README
+[Unit]
+Description=Personal CRM: daily backup of the prod database at 03:00 Moscow time
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Europe/Moscow
+# If the server was off at 03:00, the backup runs once it is on again
+Persistent=true
+
+[Install]
+WantedBy=timers.target

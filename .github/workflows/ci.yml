@@ -131,7 +131,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
-      # Only builds: the image is pushed to GHCR after merge to main (deploy.yml)
+      # Only builds: the image is pushed to GHCR after merge to main (deploy-staging.yml)
       - uses: docker/build-push-action@v7
         with:
           context: .
