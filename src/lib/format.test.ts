@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ageText,
+  birthdayWhenText,
   contactsCount,
+  formatBirthDate,
   formatDateTime,
   formatDueDate,
+  monthNamesGenitive,
   overdueText,
+  turningAgeText,
+  yearsCount,
 } from "@/lib/format";
 
 describe("contactsCount", () => {
@@ -89,5 +95,76 @@ describe("overdueText", () => {
     [101, "просрочено на 101 день"],
   ])("%i -> «%s»", (days, text) => {
     expect(overdueText(days)).toBe(text);
+  });
+});
+
+describe("Дата рождения в карточке", () => {
+  it("Склонение лет", () => {
+    expect(yearsCount(21)).toBe("21 год");
+    expect(yearsCount(32)).toBe("32 года");
+    expect(yearsCount(35)).toBe("35 лет");
+    expect(yearsCount(1)).toBe("1 год");
+    expect(yearsCount(11)).toBe("11 лет");
+    expect(yearsCount(104)).toBe("104 года");
+  });
+
+  it("Меньше года", () => {
+    expect(ageText(0)).toBe("меньше года");
+    expect(ageText(36)).toBe("36 лет");
+  });
+
+  it("Добавил контакт с полной датой", () => {
+    expect(formatBirthDate({ day: 15, month: 3, year: 1990 })).toBe(
+      "15 марта 1990",
+    );
+  });
+
+  it("Дата без года", () => {
+    expect(formatBirthDate({ day: 15, month: 3, year: null })).toBe("15 марта");
+  });
+
+  it("every month is in the genitive case", () => {
+    expect(monthNamesGenitive).toEqual([
+      "января",
+      "февраля",
+      "марта",
+      "апреля",
+      "мая",
+      "июня",
+      "июля",
+      "августа",
+      "сентября",
+      "октября",
+      "ноября",
+      "декабря",
+    ]);
+    expect(formatBirthDate({ day: 1, month: 1, year: null })).toBe("1 января");
+    expect(formatBirthDate({ day: 31, month: 12, year: null })).toBe(
+      "31 декабря",
+    );
+  });
+});
+
+describe("Строка контакта в блоке «Скоро день рождения»", () => {
+  it("Когда", () => {
+    expect(birthdayWhenText(0)).toBe("сегодня");
+    expect(birthdayWhenText(1)).toBe("завтра");
+    expect(birthdayWhenText(3)).toBe("через 3 дня");
+    expect(birthdayWhenText(5)).toBe("через 5 дней");
+    expect(birthdayWhenText(2)).toBe("через 2 дня");
+    expect(birthdayWhenText(7)).toBe("через 7 дней");
+  });
+
+  it("Сколько исполнится", () => {
+    expect(turningAgeText(36)).toBe("исполнится 36 лет");
+    expect(turningAgeText(21)).toBe("исполнится 21 год");
+    expect(turningAgeText(1)).toBe("исполнится 1 год");
+  });
+
+  it("Невисокосный год", () => {
+    // The row shows the real date, February 29, even when it comes on the 28th
+    expect(formatBirthDate({ day: 29, month: 2, year: null })).toBe(
+      "29 февраля",
+    );
   });
 });

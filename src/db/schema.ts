@@ -7,6 +7,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -148,6 +149,11 @@ export const contacts = pgTable(
     touchIntervalSetAt: timestamp("touch_interval_set_at", {
       withTimezone: true,
     }),
+    // Birth date: the day and the month, the year if it is known. Three numbers,
+    // not a date: a date without a year has no honest place in a "date" column
+    birthDay: smallint("birth_day"),
+    birthMonth: smallint("birth_month"),
+    birthYear: smallint("birth_year"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -161,6 +167,31 @@ export const contacts = pgTable(
     check(
       "contacts_touch_interval_pair_check",
       sql`(${table.touchInterval} is null) = (${table.touchIntervalSetAt} is null)`,
+    ),
+    // The database refuses a birth date that does not exist, whatever code
+    // writes it. "Not later than today" is checked by the server: a check
+    // cannot use now()
+    check(
+      "contacts_birth_day_month_pair_check",
+      sql`(${table.birthDay} is null) = (${table.birthMonth} is null)`,
+    ),
+    check(
+      "contacts_birth_year_needs_date_check",
+      sql`${table.birthYear} is null or (${table.birthDay} is not null and ${table.birthMonth} is not null)`,
+    ),
+    // The month exists, the day is in it (February has 29), the year is from
+    // 1900, and February 29 has no year or a leap one
+    check(
+      "contacts_birth_date_check",
+      sql`${table.birthMonth} is null or (
+        ${table.birthMonth} between 1 and 12
+        and ${table.birthDay} between 1 and (case ${table.birthMonth} when 2 then 29 when 4 then 30 when 6 then 30 when 9 then 30 when 11 then 30 else 31 end)
+        and (${table.birthYear} is null or (
+          ${table.birthYear} >= 1900
+          and (${table.birthMonth} <> 2 or ${table.birthDay} <> 29
+            or (${table.birthYear} % 4 = 0 and (${table.birthYear} % 100 <> 0 or ${table.birthYear} % 400 = 0)))
+        ))
+      )`,
     ),
   ],
 );

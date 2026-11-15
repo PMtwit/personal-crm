@@ -11,6 +11,7 @@ import {
   getContact,
   getTouchStatus,
   insertContact,
+  listBirthdayContacts,
   insertNote,
   listContactGroupIds,
   listContacts,
@@ -27,6 +28,7 @@ import { resolveSelectedGroup } from "@/lib/groups";
 import {
   addToGroup,
   createContact,
+  createContactWithBirthDate,
   createContactWithInterval,
   createGroup,
   createUser,
@@ -50,6 +52,9 @@ const NEW_VALUES = {
   howWeMet: null,
   phone: null,
   email: null,
+  birthDay: null,
+  birthMonth: null,
+  birthYear: null,
 };
 
 describe("У контакта и группы есть владелец", () => {
@@ -235,5 +240,24 @@ describe("«Пора связаться» - только свои", () => {
 
     expect(await listDueContacts(b)).toEqual([]);
     expect((await listDueContacts(a)).map((c) => c.name)).toEqual(["Анна"]);
+  });
+});
+
+describe("«Скоро день рождения» - только свои", () => {
+  it("День рождения у контакта A", async () => {
+    const anna = await createContactWithBirthDate(a, "Анна", {
+      day: 16,
+      month: 11,
+    });
+    const groupOfA = await createGroup(a, "Семья");
+    await addToGroup(anna, groupOfA);
+    await createContact(b, "Борис");
+
+    expect(await listBirthdayContacts(b, null)).toEqual([]);
+    // Not even with the id of A's group
+    expect(await listBirthdayContacts(b, groupOfA)).toEqual([]);
+    expect(
+      (await listBirthdayContacts(a, null)).map((contact) => contact.name),
+    ).toEqual(["Анна"]);
   });
 });

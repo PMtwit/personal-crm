@@ -23,13 +23,13 @@ import {
   groupNameSchema,
   noteSchema,
   parseId,
-  type ContactField,
+  type ContactErrorKey,
   type ContactValues,
 } from "@/lib/validation";
 
 export type ContactFormState = {
   values?: ContactValues;
-  errors?: Partial<Record<ContactField, string>>;
+  errors?: Partial<Record<ContactErrorKey, string>>;
 };
 
 export type NoteFormState = {

@@ -14,6 +14,7 @@ import {
 
 import { db } from "@/db";
 import { contactGroups, contacts, groups, notes } from "@/db/schema";
+import type { WithBirthDate } from "@/lib/birthdays";
 import type { TouchInterval } from "@/lib/keep-in-touch";
 import { escapeLike, searchTerms } from "@/lib/search";
 import { APP_TIME_ZONE } from "@/lib/time-zone";
@@ -291,6 +292,44 @@ export async function listDueContacts(
   return rows.flatMap((row) =>
     row.touchInterval && row.dueAt
       ? [{ ...row, touchInterval: row.touchInterval, dueAt: row.dueAt }]
+      : [],
+  );
+}
+
+export type BirthdayContact = WithBirthDate & { id: number; name: string };
+
+// Every contact of the user with a birth date, by name, as in the list.
+// Which birthdays are soon is counted by upcomingBirthdays: the calendar
+// (February 29, the turn of the year) lives in one place, not in SQL.
+// One person has at most a few thousand contacts: the rows are small and cheap.
+// With a group, only the contacts in it; null means all contacts
+export async function listBirthdayContacts(
+  userId: string,
+  groupId: number | null = null,
+): Promise<BirthdayContact[]> {
+  const rows = await db
+    .select({
+      id: contacts.id,
+      name: contacts.name,
+      birthDay: contacts.birthDay,
+      birthMonth: contacts.birthMonth,
+      birthYear: contacts.birthYear,
+    })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.userId, userId),
+        isNotNull(contacts.birthDay),
+        isNotNull(contacts.birthMonth),
+        groupId === null ? undefined : inGroup(groupId),
+      ),
+    )
+    .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
+
+  // The condition above guarantees the day and the month
+  return rows.flatMap(({ birthDay, birthMonth, ...row }) =>
+    birthDay !== null && birthMonth !== null
+      ? [{ ...row, birthDay, birthMonth }]
       : [],
   );
 }

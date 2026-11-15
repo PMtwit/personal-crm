@@ -33,6 +33,10 @@ export type SeedContact = {
   notes: SeedNote[];
   // Groups of the contact; empty for contacts in no group
   groups: SeedGroup[];
+  // The day and the month are set together; the year only with them
+  birthDay: number | null;
+  birthMonth: number | null;
+  birthYear: number | null;
 };
 
 // Row for the contacts table: everything except notes and groups
@@ -47,6 +51,9 @@ export function toContactRow(contact: SeedContact) {
     touchIntervalSetAt,
     createdAt,
     updatedAt,
+    birthDay,
+    birthMonth,
+    birthYear,
   } = contact;
   return {
     name,
@@ -58,6 +65,9 @@ export function toContactRow(contact: SeedContact) {
     touchIntervalSetAt,
     createdAt,
     updatedAt,
+    birthDay,
+    birthMonth,
+    birthYear,
   };
 }
 
@@ -731,6 +741,29 @@ function pickGroups(random: Random): SeedGroup[] {
   return picked;
 }
 
+type SeedBirthDate = Pick<SeedContact, "birthDay" | "birthMonth" | "birthYear">;
+
+// About half of the contacts have a birth date, a third of them without a year.
+// The days are spread evenly over the year, February 29 included, so any week
+// has a few birthdays. Years 1950-2005; February 29 only in a leap one
+function pickBirthDate(random: Random): SeedBirthDate {
+  if (!random.chance(0.5)) {
+    return { birthDay: null, birthMonth: null, birthYear: null };
+  }
+  // 2000 is a leap year: its 366 days are all the possible birthdays
+  const date = new Date(Date.UTC(2000, 0, 1 + random.int(0, 365)));
+  const birthDay = date.getUTCDate();
+  const birthMonth = date.getUTCMonth() + 1;
+  if (random.chance(1 / 3)) {
+    return { birthDay, birthMonth, birthYear: null };
+  }
+  const birthYear =
+    birthDay === 29 && birthMonth === 2
+      ? 1952 + 4 * random.int(0, 13)
+      : random.int(1950, 2005);
+  return { birthDay, birthMonth, birthYear };
+}
+
 // Move a moment to daytime (9:00-21:59 Moscow time), never past "now"
 function atDaytime(random: Random, date: Date, now: Date): Date {
   const result = new Date(date);
@@ -753,6 +786,8 @@ export function generateContacts(
   const touchRandom = createRandom(20261031);
   // Same for groups: names, notes and intervals stay what they were
   const groupRandom = createRandom(20261101);
+  // Same for birth dates: everything else stays what it was
+  const birthRandom = createRandom(20261115);
   const usedNames = new Set<string>();
   const usedEmails = new Set<string>();
   const result: SeedContact[] = [];
@@ -818,6 +853,7 @@ export function generateContacts(
       updatedAt: createdAt,
       notes,
       groups: pickGroups(groupRandom),
+      ...pickBirthDate(birthRandom),
     });
   }
 

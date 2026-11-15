@@ -8,6 +8,7 @@ import { DueContacts } from "@/components/due-contacts";
 import { GroupFilter } from "@/components/group-filter";
 import { SearchBox, SearchBoxFallback } from "@/components/search-box";
 import { buttonVariants } from "@/components/ui/button";
+import { UpcomingBirthdays } from "@/components/upcoming-birthdays";
 
 export default function ContactsPage({ searchParams }: PageProps<"/">) {
   return (
@@ -40,6 +41,9 @@ export default function ContactsPage({ searchParams }: PageProps<"/">) {
       </div>
       <Suspense fallback={null}>
         <DueContacts searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <UpcomingBirthdays searchParams={searchParams} />
       </Suspense>
       <Suspense fallback={<ContactListSkeleton />}>
         <ContactList searchParams={searchParams} />

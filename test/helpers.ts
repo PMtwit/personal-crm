@@ -83,6 +83,25 @@ export async function createContact(
   return row.id;
 }
 
+// A contact with a birth date, written straight to the database
+export async function createContactWithBirthDate(
+  userId: string,
+  name: string,
+  birth: { day: number; month: number; year?: number | null },
+): Promise<number> {
+  const [row] = await db
+    .insert(contacts)
+    .values({
+      userId,
+      name,
+      birthDay: birth.day,
+      birthMonth: birth.month,
+      birthYear: birth.year ?? null,
+    })
+    .returning({ id: contacts.id });
+  return row.id;
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function daysAgo(days: number): Date {

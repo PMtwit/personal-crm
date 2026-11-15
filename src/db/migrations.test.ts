@@ -9,13 +9,17 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client, Pool } from "pg";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { db } from "@/db";
 
 import { assertTestDatabase, databaseName } from "../../e2e/test-database";
 import { runMigrations } from "../../scripts/run-migrations.ts";
+import { createUser } from "../../test/helpers";
 
 // An update of the app as it happens on deploy: a database made before
 // "keep in touch" gets the new migrations on top of its data.
@@ -64,7 +68,10 @@ async function folderWithMigrations(count: number): Promise<string> {
   ) as { entries: { tag: string }[] };
   const entries = journal.entries.slice(0, count);
   expect(entries.map((entry) => entry.tag)).toEqual(
-    ["0000_init", "0001_touch_interval", "0002_groups"].slice(0, count),
+    ["0000_init", "0001_touch_interval", "0002_groups", "0003_login"].slice(
+      0,
+      count,
+    ),
   );
 
   await mkdir(path.join(folder, "meta"));
@@ -84,6 +91,9 @@ async function folderWithMigrations(count: number): Promise<string> {
 async function migrateTo(pool: Pool, migrationsFolder: string): Promise<void> {
   await migrate(drizzle({ client: pool }), { migrationsFolder });
 }
+
+// The fields a later migration (0004) adds to every contact: empty
+const NO_BIRTH_DATE = { birth_day: null, birth_month: null, birth_year: null };
 
 describe("Частота задаётся в карточке", () => {
   it("Старые контакты после обновления", async () => {
@@ -133,6 +143,7 @@ describe("Частота задаётся в карточке", () => {
           touch_interval: null,
           touch_interval_set_at: null,
           user_id: owner.id,
+          ...NO_BIRTH_DATE,
         })),
       );
       const notesAfter = await pool.query("select * from notes order by id");
@@ -236,7 +247,9 @@ describe("Существующие данные переходят к владе
         expect(user_id).toBe(owner.id);
         return fields;
       };
-      expect(after.contacts.map(withoutOwner)).toEqual(before.contacts);
+      expect(after.contacts.map(withoutOwner)).toEqual(
+        before.contacts.map((contact) => ({ ...contact, ...NO_BIRTH_DATE })),
+      );
       expect(after.groups.map(withoutOwner)).toEqual(before.groups);
     });
   });
@@ -286,5 +299,183 @@ describe("Существующие данные переходят к владе
 
       expect(await snapshot(pool)).toEqual(before);
     });
+  });
+});
+
+// A database as it was before birthdays: one user with contacts, notes,
+// "keep in touch" intervals and groups
+async function fillDatabaseBeforeBirthdays(pool: Pool): Promise<void> {
+  await pool.query(
+    `insert into users (id, name, email, email_verified)
+     values ('owner-id', '', 'owner@example.com', true)`,
+  );
+  await pool.query(
+    `insert into contacts (user_id, name, about, phone, touch_interval, touch_interval_set_at)
+     select 'owner-id', 'Контакт ' || n, 'О человеке ' || n, '+7 900 ' || n,
+            case when n % 3 = 0 then 'month'::touch_interval end,
+            case when n % 3 = 0 then '2026-09-01T09:00:00Z'::timestamptz end
+     from generate_series(1, 200) n`,
+  );
+  await pool.query(
+    `insert into notes (contact_id, body)
+     select c.id, 'Заметка ' || n from contacts c cross join generate_series(1, 3) n
+     where c.id <= 100`,
+  );
+  await pool.query(
+    `insert into groups (user_id, name) values ('owner-id', 'Семья'), ('owner-id', 'Дача')`,
+  );
+  await pool.query(
+    `insert into contact_groups (contact_id, group_id)
+     select c.id, g.id from contacts c join groups g on g.id = (c.id % 2) + 1`,
+  );
+}
+
+describe("Поле «Дата рождения» в формах контакта", () => {
+  it("Старые контакты после обновления", async () => {
+    const url = migrationDatabaseUrl();
+    await recreateDatabase(url, true);
+    const oldMigrations = await folderWithMigrations(4);
+    const pool = new Pool({ connectionString: url });
+    try {
+      // The app before birthdays, with people, notes, intervals and groups
+      await migrateTo(pool, oldMigrations);
+      await fillDatabaseBeforeBirthdays(pool);
+      const before = await snapshot(pool);
+      expect(before.contacts).toHaveLength(200);
+      expect(before.notes).toHaveLength(300);
+      expect(before.groups).toHaveLength(2);
+      expect(before.contactGroups).toHaveLength(200);
+
+      // The update: all migrations, as on deploy
+      await runMigrations(url, "owner@example.com");
+
+      // Every old contact has no birth date; everything else is as it was
+      const after = await snapshot(pool);
+      expect(after.contacts).toEqual(
+        before.contacts.map((contact) => ({ ...contact, ...NO_BIRTH_DATE })),
+      );
+      expect(after.notes).toEqual(before.notes);
+      expect(after.groups).toEqual(before.groups);
+      expect(after.contactGroups).toEqual(before.contactGroups);
+    } finally {
+      await pool.end();
+      await rm(oldMigrations, { recursive: true, force: true });
+      await recreateDatabase(url, false);
+    }
+  });
+});
+
+// The database itself refuses a date that does not exist, whatever code writes
+// it. Checked in the unit test database: it is fully migrated
+describe("Проверка даты рождения в самой базе", () => {
+  // PostgreSQL's code for "a check constraint would be broken"
+  const CHECK_VIOLATION = "23514";
+
+  type Birth = {
+    day: number | null;
+    month: number | null;
+    year: number | null;
+  };
+
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = await createUser("owner@example.com");
+  });
+
+  async function insertBirthDate(birth: Birth): Promise<void> {
+    await db.execute(
+      sql`insert into contacts (user_id, name, birth_day, birth_month, birth_year)
+          values (${userId}, 'Анна', ${birth.day}, ${birth.month}, ${birth.year})`,
+    );
+  }
+
+  // The code and the constraint of the error, as safe-query-errors.ts keeps them
+  async function refusal(
+    birth: Birth,
+  ): Promise<{ code?: string; constraint?: string }> {
+    try {
+      await insertBirthDate(birth);
+    } catch (error) {
+      const { code, constraint } = error as {
+        code?: string;
+        constraint?: string;
+      };
+      return { code, constraint };
+    }
+    return {};
+  }
+
+  it("Несуществующая дата", async () => {
+    expect(await refusal({ day: 31, month: 4, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+    expect(await refusal({ day: 30, month: 2, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+    expect(await refusal({ day: 32, month: 1, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+    expect(await refusal({ day: 1, month: 13, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+  });
+
+  it("29 февраля невисокосного года", async () => {
+    expect(await refusal({ day: 29, month: 2, year: 2001 })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+    // 1900 is divisible by 100 and not by 400: not a leap year
+    expect(await refusal({ day: 29, month: 2, year: 1900 })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+  });
+
+  it("Год без дня и месяца", async () => {
+    expect(await refusal({ day: null, month: null, year: 1990 })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_year_needs_date_check",
+    });
+  });
+
+  it("День без месяца", async () => {
+    expect(await refusal({ day: 15, month: null, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_day_month_pair_check",
+    });
+    expect(await refusal({ day: null, month: 3, year: null })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_day_month_pair_check",
+    });
+  });
+
+  it("Год вне диапазона", async () => {
+    expect(await refusal({ day: 15, month: 3, year: 1899 })).toEqual({
+      code: CHECK_VIOLATION,
+      constraint: "contacts_birth_date_check",
+    });
+  });
+
+  it("29 февраля", async () => {
+    await insertBirthDate({ day: 29, month: 2, year: null });
+    await insertBirthDate({ day: 29, month: 2, year: 2000 });
+    await insertBirthDate({ day: 15, month: 3, year: 1990 });
+    await insertBirthDate({ day: null, month: null, year: null });
+
+    const { rows } = await db.execute<Record<string, number | null>>(
+      sql`select birth_day, birth_month, birth_year from contacts order by id`,
+    );
+    expect(rows).toEqual([
+      { birth_day: 29, birth_month: 2, birth_year: null },
+      { birth_day: 29, birth_month: 2, birth_year: 2000 },
+      { birth_day: 15, birth_month: 3, birth_year: 1990 },
+      { birth_day: null, birth_month: null, birth_year: null },
+    ]);
   });
 });

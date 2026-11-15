@@ -42,6 +42,44 @@ test("форма не теряет введённое при ошибке", asyn
   await expect(page).toHaveURL(/\/contacts\/new$/);
 });
 
+// On a phone the form fits the screen: the page does not scroll sideways,
+// and both buttons under the form are on the screen whole
+for (const width of [375, 320]) {
+  test(`форма контакта на ширине ${width} px → без прокрутки вбок, кнопки видны целиком`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/");
+    const card = await contactList(page)
+      .getByRole("link")
+      .first()
+      .getAttribute("href");
+
+    for (const [address, submit] of [
+      ["/contacts/new", "Добавить контакт"],
+      [`${card}/edit`, "Сохранить"],
+    ]) {
+      await page.goto(address);
+      for (const button of [
+        page.getByRole("button", { name: submit }),
+        page.getByRole("link", { name: "Отмена" }),
+      ]) {
+        await expect(button).toBeVisible();
+        const box = (await button.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+      }
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth >
+            document.documentElement.clientWidth,
+        ),
+      ).toBe(false);
+    }
+  });
+}
+
 test("добавил контакт → нашёл по имени → дописал заметку → изменения сохранились", async ({
   page,
 }) => {

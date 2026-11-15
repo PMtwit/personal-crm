@@ -45,6 +45,9 @@ describe("Раздел «Группы» в карточке", () => {
       howWeMet: null,
       phone: null,
       email: null,
+      birthDay: null,
+      birthMonth: null,
+      birthYear: null,
     });
 
     expect(await groupNames()).toEqual(["Дача", "Семья"]);
