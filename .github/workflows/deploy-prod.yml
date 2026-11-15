@@ -1,0 +1,146 @@
+name: Deploy prod
+
+# Only by hand: GitHub → Actions → Deploy prod → Run workflow (see README).
+# Prod (app.pmcrm.site) gets the same image as the test stand, and only a version
+# whose deploy to the test stand went green:
+# - "sha" empty: the newest green deploy to the test stand
+# - "sha" given: that commit, if it passed the test stand
+# - "rollback": the prod version before the current one; the server keeps the
+#   list. "sha" is not used and the test stand is not checked
+# On the server: backup, migrations, the new app, smoke check of /health. Then
+# old images go: on the server (deploy.sh) and in GHCR (clean-registry.sh)
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA. Empty: the newest green deploy to the test stand"
+        required: false
+        type: string
+        default: ""
+      rollback:
+        description: "Rollback: bring back the prod version before the current one (SHA is not used)"
+        required: false
+        type: boolean
+        default: false
+
+# One prod run at a time: a second one waits. The server has its own lock
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  SERVER: deploy@217.180.0.147
+  APP_DIR: /srv/personal-crm
+  APP_URL: https://app.pmcrm.site
+
+jobs:
+  deploy:
+    name: Deploy prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: read
+      packages: read
+    # GitHub keeps the history of prod runs (Deployments). It shows the commit of
+    # main this was started from; the version deployed is in the run's summary
+    environment:
+      name: prod
+      url: https://app.pmcrm.site
+    steps:
+      # This workflow and the scripts it copies come from the branch it was
+      # started from: only main, where everything went through review and CI
+      - name: Check the branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Start Deploy prod from main, not from $GITHUB_REF_NAME. Nothing changed"
+          exit 1
+
+      - uses: actions/checkout@v7
+
+      # Not for a rollback: the server knows where a rollback goes
+      - name: Pick the version
+        id: pick
+        if: ${{ !inputs.rollback }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_SHA: ${{ inputs.sha }}
+        run: |
+          sha="$(deploy/pick-prod-version.sh "$REQUESTED_SHA")"
+          echo "Deploying $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # The server's host key: SSH refuses to talk to any other machine
+          echo "217.180.0.147 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvufsWQh68fUmn7JyKKdConhhK4KLAK0Mzh9fXajgi2" > ~/.ssh/known_hosts
+
+      # Everything in deploy/ of main into prod's folder, so a new script
+      # arrives by itself, and a rollback runs today's scripts with the older
+      # image. A glob, not the folder itself: the folder on the server keeps
+      # its own permissions
+      - name: Copy deploy scripts
+        run: scp -rp deploy/* "$SERVER:$APP_DIR/"
+
+      # Backup, migrations, the new app, smoke check of /health, old images.
+      # The registry token goes on stdin and only lives until this job ends
+      - name: Deploy
+        env:
+          TARGET: ${{ inputs.rollback && 'rollback' || steps.pick.outputs.sha }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$REGISTRY_TOKEN" | ssh "$SERVER" "$APP_DIR/deploy.sh prod $TARGET $REGISTRY_USER"
+
+      - name: Smoke check through nginx
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$APP_URL/health"
+
+      # The version prod runs now and the one a rollback would bring back,
+      # from the server's list
+      - name: Summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          ROLLBACK: ${{ inputs.rollback }}
+          PICKED: ${{ steps.pick.outputs.sha }}
+        run: |
+          link() { echo "[\`$1\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$1)"; }
+          if [ "$JOB_STATUS" != success ]; then
+            if [ "$ROLLBACK" = true ]; then what="Rollback"; else what="Deploy of ${PICKED:-the version}"; fi
+            echo "**$what failed.** Nothing was rolled back. The failed step and its log are above" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          history="$(ssh "$SERVER" "tail -n 2 $APP_DIR/deploy-history")"
+          current="$(tail -n 1 <<<"$history")"
+          previous=""
+          if [ "$(wc -l <<<"$history")" -ge 2 ]; then previous="$(head -n 1 <<<"$history")"; fi
+          {
+            if [ "$ROLLBACK" = true ]; then echo "**Rolled back.** Prod runs $(link "$current")"; else echo "**Deployed.** Prod runs $(link "$current")"; fi
+            echo
+            if [ -n "$previous" ]; then echo "A rollback would bring back $(link "$previous")"; else echo "No earlier version to roll back to"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # The newest 10 builds stay in GHCR. Only after a green deploy
+  clean-registry:
+    name: Clean up GHCR
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Keep the newest 10 builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: deploy/clean-registry.sh

@@ -2,18 +2,21 @@
 # Deploys the app image with the given tag (a commit SHA) to one environment on
 # this server: prod (app.pmcrm.site) or staging, the test stand (test-app.pmcrm.site).
 # On prod a backup of the database comes first; then migrations, the new app and
-# a smoke check of /health. GitHub Actions runs it for both environments after
-# every push to main. A manual rollback is the same script with the previous tag
-# (see README); it never rolls back by itself.
+# a smoke check of /health. GitHub Actions runs it: "Deploy staging" after every
+# push to main, "Deploy prod" only when the owner starts it (see README).
 #
-#   deploy.sh <prod|staging> <tag> [registry user]    the registry token, if needed, comes on stdin
+# "rollback" instead of a tag brings back the version before the current one;
+# a second rollback goes one more step back. Nothing rolls back by itself.
+#
+#   deploy.sh <prod|staging> <tag|rollback> [registry user]    the registry token, if needed, comes on stdin
 set -euo pipefail
 
-usage="usage: deploy.sh <prod|staging> <image tag> [registry user]"
+usage="usage: deploy.sh <prod|staging> <image tag|rollback> [registry user]"
 environment_arg="${1:?$usage}"
-tag="${2:?$usage}"
+target="${2:?$usage}"
 registry_user="${3:-}"
-keep_backups=30
+# After a prod deploy, app images older than this leave the server (step 7)
+max_image_age_days=14
 
 cd "$(dirname "$0")"
 . ./common.sh
@@ -21,12 +24,44 @@ cd "$(dirname "$0")"
 use_environment "$environment_arg"
 check_env
 take_lock
+migrate_history
+
+running="$(running_version)"
+
+# The version to deploy. A rollback goes to the version before the one running
+# now. Usually that is the one before the newest in the history, and the newest
+# leaves the history once the rollback passes the smoke check. But if the last
+# deploy failed after starting its app, the version running never got into the
+# history: then the newest one in the history is the version before it
+rollback=false
+forget_newest_after=false
+if [ "$target" = rollback ]; then
+  rollback=true
+  newest="$(current_tag)"
+  if [ -n "$running" ] && [ "$running" != "$newest" ]; then
+    tag="$newest"
+  else
+    tag="$(previous_tag)"
+    forget_newest_after=true
+  fi
+  if [ -z "$tag" ]; then
+    echo "No earlier $environment version to roll back to: nothing changed" >&2
+    exit 1
+  fi
+  echo "==> Rolling back $environment from ${running:-none} to $tag"
+else
+  tag="$target"
+fi
+if ! [[ "$tag" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "'$tag' is not a full commit SHA: nothing changed" >&2
+  exit 1
+fi
 
 image="$repo:$tag"
 export APP_TAG="$tag"
 
-# While this runs, a deploy of the other environment must not remove this image
-# when it cleans up (step 6 there). Gone when the script ends, whatever happens
+# While this runs, a prod deploy must not remove this image when it cleans up
+# (step 7). Gone when the script ends, whatever happens
 docker_config=""
 on_exit() {
   rm -f deploying-tag
@@ -35,7 +70,7 @@ on_exit() {
   fi
 }
 trap on_exit EXIT
-echo "$tag" > deploying-tag
+echo "$tag" >deploying-tag
 
 # 1. Prod only: the backup, named after the version running now. If it fails,
 #    the script stops here and the app that is running now stays as it is.
@@ -45,7 +80,7 @@ echo "$tag" > deploying-tag
 if [ "$environment" = prod ]; then
   echo "==> Backing up the database"
   compose up -d --wait db </dev/null
-  backup_database before-deploy "$(running_version)"
+  backup_database before-deploy "$running"
   echo "Saved $PWD/$backup_path"
 fi
 
@@ -75,39 +110,50 @@ echo "==> Smoke check"
 curl -fsS --retry 5 --retry-delay 2 --retry-all-errors "http://127.0.0.1:$APP_PORT/health"
 echo
 
-# 6. Disk. Prod: keep the newest backups; copies taken before a restore stay
-#    until removed by hand. Both: keep only the images some environment needs,
-#    see kept_tags
-if [ "$environment" = prod ]; then
-  find "$backups_dir" -maxdepth 1 -name 'before-deploy_*.dump' | sort -r | tail -n +"$((keep_backups + 1))" | while read -r old; do
-    rm -f "$old"
-  done
+# 6. The history of this environment: only versions that passed the smoke check
+if [ "$forget_newest_after" = true ]; then
+  forget_newest
+else
+  record_deployed "$tag"
 fi
 
-deployed="$(cat deployed-tag 2>/dev/null || true)"
-if [ "$deployed" != "$tag" ]; then
-  if [ -n "$deployed" ]; then
-    echo "$deployed" > previous-tag
-  fi
-  echo "$tag" > deployed-tag
-fi
-previous="$(cat previous-tag 2>/dev/null || true)"
-
-# The images of both environments share this server. Each environment keeps the
-# version it runs, the previous one for a manual rollback, and the one it is
-# deploying right now
-kept_tags() {
-  local dir
-  for dir in "$prod_dir" "$staging_dir"; do
-    cat "$dir/deployed-tag" "$dir/previous-tag" "$dir/deploying-tag" 2>/dev/null || true
+# 7. Prod only, disk. Backups: the newest before-deploy ones stay; backup.sh
+#    prunes the daily ones; copies taken before a restore stay until removed by
+#    hand. Images: both environments share them on this server, see remove_old_images
+remove_old_images() {
+  local kept cutoff old created
+  # Never removed: the two newest prod versions (the current one and where a
+  # rollback goes), the test stand's current version, and any version being
+  # deployed right now
+  kept="$(
+    tail -n 2 "$prod_dir/$history_file" 2>/dev/null || true
+    current_tag "$staging_dir"
+    cat "$prod_dir/deploying-tag" "$staging_dir/deploying-tag" 2>/dev/null || true
+  )"
+  # Docker gives the build time of an image in UTC, like
+  # 2026-11-14T17:28:34.515107863Z. Its digits up to the seconds make a number
+  # that compares with the cutoff: 20261114172834
+  cutoff="$(date -u -d "-$max_image_age_days days" +%Y%m%d%H%M%S)"
+  docker image ls "$repo" --format '{{.Tag}}' | while read -r old; do
+    if [ "$old" = "<none>" ] || grep -qxF -- "$old" <<<"$kept"; then
+      continue
+    fi
+    created="$(docker image inspect --format '{{.Created}}' "$repo:$old" 2>/dev/null || true)"
+    created="$(tr -dc '0-9' <<<"${created:0:19}")"
+    if [ "${#created}" -eq 14 ] && [ "$created" -lt "$cutoff" ]; then
+      docker image rm "$repo:$old" >/dev/null || echo "Warning: could not remove $repo:$old" >&2
+    fi
   done
+  docker image prune -f --filter "label=org.opencontainers.image.source=https://github.com/PMtwit/personal-crm" >/dev/null
 }
-kept="$(kept_tags)"
-docker image ls "$repo" --format '{{.Tag}}' | while read -r old; do
-  if [ "$old" != "<none>" ] && ! grep -qxF -- "$old" <<<"$kept"; then
-    docker image rm "$repo:$old" >/dev/null || echo "Warning: could not remove $repo:$old" >&2
-  fi
-done
-docker image prune -f --filter "label=org.opencontainers.image.source=https://github.com/PMtwit/personal-crm" >/dev/null
+if [ "$environment" = prod ]; then
+  prune_backups before-deploy "$keep_backups"
+  remove_old_images
+fi
 
-echo "==> Deployed $image to $environment (previous: ${previous:-none})"
+previous="$(previous_tag)"
+if [ "$rollback" = true ]; then
+  echo "==> Rolled back $environment to $image (before it in the history: ${previous:-none})"
+else
+  echo "==> Deployed $image to $environment (previous: ${previous:-none})"
+fi

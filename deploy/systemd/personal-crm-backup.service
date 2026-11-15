@@ -1,0 +1,11 @@
+# Daily backup of the prod database (backup.sh), started by
+# personal-crm-backup.timer. Installed by hand into /etc/systemd/system, see
+# README. The script itself arrives with every prod deploy
+[Unit]
+Description=Personal CRM: backup of the prod database
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/srv/personal-crm/backup.sh

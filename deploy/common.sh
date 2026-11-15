@@ -3,6 +3,8 @@
 
 repo=ghcr.io/pmtwit/personal-crm
 backups_dir=backups
+# Prod keeps this many backups of each kind: taken before a deploy, daily
+keep_backups=7
 
 # Each environment has its own folder on the server, with its own copy of these
 # scripts, its .env, the versions it runs and its lock. The deploy copies the
@@ -55,27 +57,77 @@ check_env() {
   chmod 600 .env
 }
 
-# One deploy, restore or database refresh at a time in one environment: a deploy
-# that starts in the middle of a restore would run against a database that is
-# gone. A second run stops right away. The lock is released when the script ends.
+# One deploy, restore, backup or database refresh at a time in one environment:
+# a deploy that starts in the middle of a restore would run against a database
+# that is gone. A second run stops right away, or waits up to the given number
+# of seconds first. The lock is released when the script ends.
 # The other environment has its own lock in its own folder
 take_lock() {
+  local wait="${1:-0}" locked
   exec 9>.deploy.lock
-  if ! flock -n 9; then
-    echo "Another deploy, restore or database refresh is running in $environment: nothing changed, run this again when it ends" >&2
+  if [ "$wait" -gt 0 ]; then
+    flock -w "$wait" 9 && locked=yes || locked=""
+  else
+    flock -n 9 && locked=yes || locked=""
+  fi
+  if [ -z "$locked" ]; then
+    echo "Another deploy, restore, backup or database refresh is running in $environment: nothing changed, run this again when it ends" >&2
     exit 1
   fi
 }
 
-# The app version running now, from its container: deployed-tag changes only
+# The versions of an environment that passed the smoke check, oldest first, one
+# commit SHA per line, in deploy-history in the environment's folder. The last
+# line is the version that should be running, the line before it is where a
+# rollback goes. deploy.sh writes it; a rollback removes the last line
+history_file=deploy-history
+keep_history=20
+
+# The newest version in the history of this environment, or of the one in the
+# given folder; nothing if there is no history
+current_tag() {
+  tail -n 1 "${1:-.}/$history_file" 2>/dev/null || true
+}
+
+# The version before the newest one, or nothing
+previous_tag() {
+  awk '{ previous = last; last = $0 } END { print previous }' "$history_file" 2>/dev/null || true
+}
+
+# Adds a version that just passed the smoke check, unless it is the newest one
+# already. Only the newest lines stay
+record_deployed() {
+  if [ "$(current_tag)" != "$1" ]; then
+    { cat "$history_file" 2>/dev/null || true; echo "$1"; } | tail -n "$keep_history" >"$history_file.tmp"
+    mv "$history_file.tmp" "$history_file"
+  fi
+}
+
+# Removes the newest version: a rollback has just left it
+forget_newest() {
+  sed '$d' "$history_file" >"$history_file.tmp"
+  mv "$history_file.tmp" "$history_file"
+}
+
+# Until November 2026 the scripts kept only the current and the previous version,
+# in deployed-tag and previous-tag. The history starts from them, once
+migrate_history() {
+  if [ ! -f "$history_file" ] && [ -f deployed-tag ]; then
+    { cat previous-tag 2>/dev/null || true; cat deployed-tag; } | grep -v '^$' >"$history_file.tmp" || true
+    mv "$history_file.tmp" "$history_file"
+  fi
+  rm -f deployed-tag previous-tag
+}
+
+# The app version running now, from its container: the history changes only
 # after a green smoke check, so it is out of date after a failed deploy.
-# Without a container: deployed-tag, or nothing if there is no such file.
+# Without a container: the newest version in the history, or nothing.
 running_version() {
   local image
   if image="$(docker inspect --format '{{.Config.Image}}' "$environment-app-1" 2>/dev/null)"; then
     echo "${image##*:}"
   else
-    cat deployed-tag 2>/dev/null || true
+    current_tag
   fi
 }
 
@@ -103,6 +155,15 @@ backup_database() {
     return 1
   fi
   mv "$tmp" "$backup_path"
+}
+
+# Keeps the newest backups of one kind (before-deploy, daily) and deletes the
+# rest. The names start with the kind and the time, so they sort by time
+prune_backups() {
+  local label="$1" keep="$2"
+  find "$backups_dir" -maxdepth 1 -name "${label}_*.dump" | sort -r | tail -n +"$((keep + 1))" | while read -r old; do
+    rm -f "$old"
+  done
 }
 
 # Deletes the database of this environment and creates it again, empty.
