@@ -16,6 +16,7 @@ import { listContacts, listGroups } from "@/lib/data";
 
 import {
   createContact,
+  createContactWithBirthDate,
   createGroup,
   createUser,
   formData,
@@ -150,6 +151,40 @@ describe("Чужой контакт не меняется прямым запр�
     expect((await db.select().from(groups)).map((g) => g.name)).toEqual([
       "Дача",
     ]);
+  });
+});
+
+describe("«Скоро день рождения» - только свои", () => {
+  it("Дата рождения чужого контакта", async () => {
+    const a = await createUser("a@example.com");
+    const id = await createContactWithBirthDate(a, "Фёдор", {
+      day: 15,
+      month: 3,
+      year: 1990,
+    });
+    await signInAs("b@example.com");
+
+    const result = await thrownBy(() =>
+      updateContactAction(
+        id,
+        {},
+        formData({
+          name: "Фёдор",
+          birthDay: "16",
+          birthMonth: "4",
+          birthYear: "1991",
+        }),
+      ),
+    );
+
+    // "Not found", like a contact that does not exist; A's date is as it was
+    expect(result).toContain("404");
+    const [row] = await db.select().from(contacts).where(eq(contacts.id, id));
+    expect(row).toMatchObject({
+      birthDay: 15,
+      birthMonth: 3,
+      birthYear: 1990,
+    });
   });
 });
 

@@ -1,14 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { ContactAvatar } from "@/components/contact-avatar";
+import { ExpandableList } from "@/components/expandable-list";
 import { MarkContactedDialog } from "@/components/mark-contacted-dialog";
-import { Button } from "@/components/ui/button";
-
-// How many contacts are shown before "Show all"
-const VISIBLE_COUNT = 5;
 
 export type DueContactItem = {
   id: number;
@@ -18,11 +14,6 @@ export type DueContactItem = {
 };
 
 export function DueContactsList({ contacts }: { contacts: DueContactItem[] }) {
-  // Kept in the component: after going to another page and back the block is folded again
-  const [expanded, setExpanded] = useState(false);
-  const hasMore = contacts.length > VISIBLE_COUNT;
-  const visible = expanded ? contacts : contacts.slice(0, VISIBLE_COUNT);
-
   return (
     <section
       aria-labelledby="due-contacts-heading"
@@ -39,25 +30,11 @@ export function DueContactsList({ contacts }: { contacts: DueContactItem[] }) {
           {contacts.length}
         </span>
       </div>
-      <ul
-        aria-label="Кому пора написать или позвонить"
-        className="flex flex-col gap-0.5 rounded-card bg-card p-1 shadow-card sm:rounded-card-lg sm:p-1.5 sm:shadow-card-lg"
-      >
-        {visible.map((contact) => (
-          <li key={contact.id}>
-            <DueContactRow contact={contact} />
-          </li>
-        ))}
-      </ul>
-      {hasMore ? (
-        <Button
-          variant="outline"
-          onClick={() => setExpanded(!expanded)}
-          className="w-full sm:ml-1 sm:w-fit sm:self-start"
-        >
-          {expanded ? "Свернуть" : `Показать всех (${contacts.length})`}
-        </Button>
-      ) : null}
+      <ExpandableList
+        items={contacts}
+        label="Кому пора написать или позвонить"
+        renderItem={(contact) => <DueContactRow contact={contact} />}
+      />
     </section>
   );
 }

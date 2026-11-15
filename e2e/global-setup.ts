@@ -37,14 +37,18 @@ export default async function globalSetup() {
       })
       .returning({ id: users.id });
     const seed = generateContacts(SEEDED_CONTACTS);
-    // Without intervals, so that the "Time to get in touch" block is empty
-    // at the start and every test sets up its own contacts
+    // Without intervals and birth dates, so that the "Time to get in touch"
+    // and "Birthday soon" blocks are empty at the start and every test sets
+    // up its own contacts
     await db.insert(contacts).values(
       seed.map((contact) => ({
         ...toContactRow(contact),
         userId: owner.id,
         touchInterval: null,
         touchIntervalSetAt: null,
+        birthDay: null,
+        birthMonth: null,
+        birthYear: null,
       })),
     );
   } finally {

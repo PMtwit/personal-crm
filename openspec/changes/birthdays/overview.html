@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дни рождения — обзор</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@700&display=swap">
+<style>
+/* Values copied from src/app/globals.css (the app's design tokens), same variable names */
+:root {
+  --background: #ffffff;
+  --foreground: #1d2023;
+  --card: #ffffff;
+  --primary: #ff0032;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f3f7;
+  --muted: #f2f3f7;
+  --muted-foreground: #525c66;
+  --subtle: #66707a;
+  --accent: #f2f3f7;
+  --destructive: #d6002a;
+  --border: #e2e7f7;
+  --input: #e2e7f7;
+  --hero-from: #eef1fb;
+  --hero-to: #e2e7f7;
+  --radius: 14px;
+  --radius-block: 32px;
+  --radius-card: 20px;
+  --radius-note: 14px;
+  --radius-avatar: 14px;
+  --radius-avatar-lg: 24px;
+  --radius-button: 16px;
+  --radius-logo: 10px;
+  --shadow-card: 0 8px 24px rgba(60, 70, 120, 0.08);
+  --font-sans: "Onest", system-ui, sans-serif;
+  --font-display: "Unbounded", system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+  /* Derived from tokens: a pale tint of the primary red for "new" highlights */
+  --primary-soft: color-mix(in srgb, var(--primary) 8%, var(--background));
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 880px; margin: 0 auto; padding: 40px 16px 80px; }
+header.top { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--muted-foreground); }
+.logo { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius-logo); background: var(--primary); color: var(--primary-foreground); font-family: var(--font-display); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+h1 { font-weight: 500; font-size: 40px; line-height: 1.1; letter-spacing: -0.02em; margin: 16px 0 12px; text-wrap: balance; }
+h2 { font-weight: 500; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; margin: 56px 0 16px; display: flex; align-items: baseline; gap: 12px; }
+h2 .num { font-family: var(--font-display); font-size: 15px; color: var(--primary); }
+h3 { font-weight: 500; font-size: 19px; margin: 28px 0 10px; }
+p { margin: 8px 0; }
+.lead { font-size: 18px; color: var(--muted-foreground); max-width: 680px; }
+.muted { color: var(--muted-foreground); }
+.subtle { color: var(--subtle); }
+.small { font-size: 14px; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--muted); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+ul.points, ol.points { padding-left: 20px; margin: 8px 0; }
+ul.points li, ol.points li { margin: 4px 0; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 20px 24px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: var(--muted); font-size: 14px; }
+.chip.accent { background: var(--primary-soft); color: var(--destructive); }
+
+/* Screen sketches */
+.screens { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.screen-title { font-size: 18px; font-weight: 500; margin: 0 0 8px; }
+.device { border: 1px solid var(--border); border-radius: 20px; padding: 16px; background: var(--background); min-width: 0; max-width: 460px; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; }
+.title-row .t { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-button); padding: 8px 14px; font-family: var(--font-display); font-size: 11px; letter-spacing: 0.02em; white-space: nowrap; }
+.btn.primary { background: var(--primary); color: var(--primary-foreground); }
+.btn.outline { background: var(--background); border: 1px solid var(--border); }
+.btn.sm { padding: 5px 9px; font-size: 10px; border-radius: 10px; }
+.btn.block { display: flex; width: 100%; padding: 11px 14px; font-size: 11px; }
+.search { background: var(--muted); border-radius: var(--radius); padding: 10px 14px; color: var(--subtle); font-size: 14px; margin-bottom: 10px; }
+.pills { display: flex; gap: 6px; overflow: hidden; margin-bottom: 4px; }
+.pill { border-radius: 999px; padding: 5px 12px; font-size: 13px; background: var(--muted); white-space: nowrap; }
+.pill.on { background: var(--foreground); color: var(--background); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--radius-avatar); background: var(--muted); font-weight: 500; font-size: 14px; flex-shrink: 0; }
+.row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 14px; min-width: 0; }
+.row .who { flex: 1; min-width: 0; }
+.row .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta { font-size: 13px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .side { display: grid; justify-items: end; gap: 2px; flex-shrink: 0; text-align: right; }
+.row .when { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.row .age { font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+.row .late { font-size: 12px; font-weight: 500; color: var(--destructive); white-space: nowrap; }
+.letter { padding: 2px 8px; font-family: var(--font-display); font-size: 13px; color: var(--primary); }
+.count { font-size: 13px; color: var(--muted-foreground); margin: 10px 0 4px; }
+.home-block { border-radius: 26px; padding: 14px 8px 8px; display: grid; gap: 10px; }
+.home-block.due { background: linear-gradient(160deg, var(--hero-from), var(--hero-to)); }
+.home-block.bday { background: var(--muted); }
+.home-block .bh { display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 19px; font-weight: 500; }
+.home-block .bh svg { width: 20px; height: 20px; flex-shrink: 0; }
+.badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 24px; padding: 0 8px; border-radius: 999px; background: var(--background); font-size: 13px; font-weight: 700; }
+.badge.red { color: var(--destructive); }
+.home-block .list { background: var(--card); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 4px; display: grid; gap: 2px; }
+.old { opacity: 0.6; }
+.old-label { font-size: 12px; color: var(--subtle); margin: 0 0 4px 4px; }
+.is-new { position: relative; outline: 2px dashed var(--primary); outline-offset: 5px; border-radius: 22px; margin: 22px 0 14px; }
+.new-tag { position: absolute; top: -17px; right: 14px; background: var(--primary); color: var(--primary-foreground); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; z-index: 1; white-space: nowrap; }
+.hero-card { background: linear-gradient(160deg, var(--hero-from), var(--hero-to)); border-radius: 26px; padding: 18px; display: grid; gap: 14px; }
+.hero-card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.hero-card .big-avatar { width: 72px; height: 72px; border-radius: var(--radius-avatar-lg); background: var(--background); display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500; }
+.hero-card .btns { display: grid; gap: 6px; }
+.hero-card .nm { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; }
+.hero-card .ab { font-size: 14px; color: var(--muted-foreground); }
+.dl { background: var(--card); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 12px 14px; display: grid; gap: 10px; }
+.dl .di { display: grid; gap: 1px; font-size: 14px; }
+.dl .dk { font-size: 12px; color: var(--muted-foreground); }
+.dl .is-new { margin: 10px 0 2px; border-radius: 12px; outline-offset: 6px; }
+.dl .is-new .new-tag { top: -22px; right: 0; }
+.form { display: grid; gap: 12px; padding: 4px 2px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field-label { font-size: 13px; color: var(--muted-foreground); }
+.input { background: var(--muted); border-radius: var(--radius); padding: 10px 12px; font-size: 15px; color: var(--subtle); border: 1.5px solid transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.input.filled { color: var(--foreground); }
+.input.bad { border-color: var(--destructive); background: var(--background); }
+.input.sel { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.input.sel::after { content: "⌄"; color: var(--subtle); line-height: 1; margin-top: -6px; }
+.two-in { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.date-row { display: grid; grid-template-columns: 0.8fr 1.4fr 1fr; gap: 8px; }
+.hint { font-size: 12px; color: var(--subtle); }
+.err { font-size: 13px; color: var(--destructive); }
+.form .is-new { margin: 14px 0 4px; border-radius: 14px; outline-offset: 7px; }
+.form .is-new .new-tag { top: -26px; right: 0; }
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.state { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.state .when-l { font-size: 13px; color: var(--subtle); }
+.callouts { margin: 12px 0 0; padding-left: 20px; font-size: 14px; color: var(--muted-foreground); }
+.callouts li { margin: 3px 0; }
+
+/* Rules: full-width strips, one under another */
+.rules { display: grid; gap: 12px; }
+.rule { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px 20px; min-width: 0; }
+.rule .h { font-weight: 600; margin-bottom: 4px; }
+.example { font-size: 14px; color: var(--muted-foreground); background: var(--muted); border-left: 3px solid var(--primary); padding: 8px 12px; margin-top: 10px; border-radius: 0 10px 10px 0; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-card); margin: 12px 0; }
+table.data { border-collapse: collapse; width: 100%; font-size: 15px; }
+table.data th, table.data td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.data th { font-size: 13px; color: var(--muted-foreground); font-weight: 500; }
+table.data tr:last-child td { border-bottom: 0; }
+table.data td.new { color: var(--destructive); font-weight: 500; }
+table.data td.no { color: var(--subtle); }
+.rule .tablewrap { margin: 10px 0 0; }
+.rule table.data { font-size: 14px; }
+
+/* Data model */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--muted-foreground); margin: 10px 0; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--border); background: var(--muted); }
+.sw.new { border-color: var(--primary); background: var(--primary-soft); border-style: dashed; }
+.schema { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); overflow-x: auto; margin: 10px 0 6px; }
+.schema svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.scroll-hint { display: none; font-size: 13px; color: var(--subtle); margin: 4px 0; }
+@media (max-width: 760px) { .scroll-hint { display: block; } }
+.s-box { fill: var(--muted); stroke: var(--border); stroke-width: 1.5; }
+.s-head { fill: var(--hero-to); }
+.s-hl { fill: var(--primary-soft); stroke: var(--primary); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.s-name { font: 500 14px var(--font-mono); fill: var(--foreground); }
+.s-ru { font: 400 13px var(--font-sans); fill: var(--muted-foreground); }
+.s-row { font: 400 13px var(--font-mono); fill: var(--foreground); }
+.s-row .ru { font-family: var(--font-sans); fill: var(--muted-foreground); }
+.s-row.new { fill: var(--destructive); }
+.s-row.new .ru { fill: var(--destructive); }
+.s-link { fill: none; stroke: var(--subtle); stroke-width: 1.5; }
+.s-arrow { fill: var(--subtle); }
+.s-note { font: 400 13px var(--font-sans); fill: var(--subtle); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0; }
+.mini { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.mini .k { font-weight: 600; font-size: 15px; }
+.mini p { margin: 0; font-size: 14px; color: var(--muted-foreground); }
+.lookup { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 12px 0; }
+.who-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 18px 20px; display: grid; gap: 10px; min-width: 0; }
+.who-card h3 { margin: 0; }
+.ask { font-size: 14px; background: var(--muted); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; }
+.ask b { color: var(--destructive); font-weight: 500; }
+.result { justify-self: start; font-size: 14px; font-weight: 500; border-radius: 999px; padding: 4px 12px; }
+.result.in { background: var(--primary-soft); color: var(--destructive); }
+.result.out { background: var(--muted); color: var(--muted-foreground); }
+ol.steps { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+ol.steps li { counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 16px 20px; }
+ol.steps li::before { content: counter(step); font-family: var(--font-display); font-size: 22px; line-height: 1.2; color: var(--subtle); }
+ol.steps h3 { margin: 0 0 4px; font-size: 17px; }
+ol.steps p { margin: 0; color: var(--muted-foreground); font-size: 15px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 500; color: var(--muted-foreground); background: var(--muted); border-radius: 999px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+.callout { border-left: 3px solid var(--primary); padding: 4px 0 4px 16px; margin: 16px 0; max-width: 680px; }
+.callout h3 { margin: 0 0 4px; }
+.callout p { margin: 4px 0 0; color: var(--muted-foreground); }
+
+/* Checklist */
+.prep { background: var(--muted); border-radius: var(--radius-card); padding: 14px 18px; font-size: 14px; color: var(--muted-foreground); }
+.prep b { color: var(--foreground); }
+.prep ul { margin: 6px 0 0; padding-left: 18px; }
+.check-group { margin-bottom: 18px; }
+.check { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin: 6px 0; cursor: pointer; }
+.check input { margin-top: 5px; accent-color: var(--primary); width: 16px; height: 16px; flex-shrink: 0; }
+.check .sc { font-weight: 600; }
+.check .st { font-size: 14px; color: var(--muted-foreground); }
+.check .st .arrow { color: var(--primary); font-weight: 700; }
+.check .auto { font-size: 12px; color: var(--subtle); margin-left: 6px; font-weight: 500; white-space: nowrap; }
+.check .auto.only { color: var(--destructive); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.box h3 { margin-top: 0; }
+footer { margin-top: 64px; font-size: 13px; color: var(--subtle); }
+@media (max-width: 720px) {
+  h1 { font-size: 32px; }
+  h2 { font-size: 24px; }
+  .two { grid-template-columns: 1fr; }
+  .title-row .btn .label { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top"><span class="logo">Л</span>Личная CRM · обзор фичи</header>
+<h1>Дни рождения</h1>
+<p class="lead">У контакта появляется необязательная дата рождения, год можно не указывать. На главной под «Пора связаться» появляется блок «Скоро день рождения»: у кого день рождения сегодня или в ближайшую неделю, ближайшие сверху.</p>
+<div class="chips">
+  <span class="chip accent">Спроектирована, кода ещё нет</span>
+  <span class="chip">Задачи: 0 из 22</span>
+  <span class="chip">Автотесты запланированы на все 47 сценариев</span>
+  <span class="chip">Изменение <code>birthdays</code> в <code>openspec/changes/</code></span>
+</div>
+
+<!-- 1 -->
+<h2><span class="num">1</span>Коротко</h2>
+<ul class="points">
+  <li>В формах «Добавить контакт» и «Изменить контакт» новое поле «Дата рождения»: день и месяц из списков, год цифрами — по желанию.</li>
+  <li>В карточке строка «Дата рождения»: «15 марта» или «15 марта 1990, 36 лет».</li>
+  <li>На главной блок «Скоро день рождения»: сегодня и следующие 7 дней. Ведёт себя как «Пора связаться»: учитывает группу, прячется при поиске, видно первых пятерых.</li>
+  <li>Статус: <b>спроектирована</b>. Требования, план и 22 задачи написаны, кода ещё нет. На каждый из 47 сценариев запланирован автотест (программа, которая сама проходит сценарий и сверяет результат).</li>
+</ul>
+
+<!-- 2 -->
+<h2><span class="num">2</span>Что появится на экранах</h2>
+<p class="muted small">Наброски, не точные макеты. Новое обведено пунктиром. Имена и числа выдуманы, «сегодня» — 15 ноября 2026.</p>
+
+<div class="screens">
+
+  <div>
+    <p class="screen-title">Главная</p>
+    <div class="device">
+      <div class="title-row"><span class="t">Контакты</span><span class="btn primary">+ <span class="label">Добавить контакт</span></span></div>
+      <div class="search">Найти по имени</div>
+      <div class="pills"><span class="pill on">Все</span><span class="pill">Дача</span><span class="pill">Друзья</span><span class="pill">Семья</span></div>
+
+      <p class="old-label" style="margin-top:14px">как было</p>
+      <div class="home-block due old">
+        <div class="bh">Пора связаться <span class="badge red">2</span></div>
+        <div class="list">
+          <div class="row"><span class="avatar">ПС</span><div class="who"><div class="name">Пётр Соколов</div><div class="meta">Раз в месяц</div></div><div class="side"><span class="btn outline sm">Уже связался</span><span class="late">просрочено на 15 дней</span></div></div>
+          <div class="row"><span class="avatar">МК</span><div class="who"><div class="name">Мария Кузнецова</div><div class="meta">Раз в неделю</div></div><div class="side"><span class="btn outline sm">Уже связался</span><span class="late">просрочено на 3 дня</span></div></div>
+        </div>
+      </div>
+
+      <div class="is-new"><span class="new-tag">новое</span>
+        <div class="home-block bday">
+          <div class="bh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>
+            Скоро день рождения <span class="badge">7</span>
+          </div>
+          <div class="list">
+            <div class="row"><span class="avatar">ВС</span><div class="who"><div class="name">Вера Соколова</div><div class="meta">15 ноября</div></div><div class="side"><span class="when">сегодня</span><span class="age">исполнится 41 год</span></div></div>
+            <div class="row"><span class="avatar">БИ</span><div class="who"><div class="name">Борис Иванов</div><div class="meta">16 ноября</div></div><div class="side"><span class="when">завтра</span></div></div>
+            <div class="row"><span class="avatar">ГО</span><div class="who"><div class="name">Глеб Орлов</div><div class="meta">18 ноября</div></div><div class="side"><span class="when">через 3 дня</span><span class="age">исполнится 29 лет</span></div></div>
+            <div class="row"><span class="avatar">ДК</span><div class="who"><div class="name">Дарья Ким</div><div class="meta">20 ноября</div></div><div class="side"><span class="when">через 5 дней</span></div></div>
+            <div class="row"><span class="avatar">ЕМ</span><div class="who"><div class="name">Екатерина Александровна Морозова-Константинопольская</div><div class="meta">22 ноября</div></div><div class="side"><span class="when">через 7 дней</span><span class="age">исполнится 56 лет</span></div></div>
+          </div>
+          <span class="btn outline block">Показать всех (7)</span>
+        </div>
+      </div>
+
+      <p class="count">Всего 1 000 контактов</p>
+      <div class="old">
+        <div class="letter">А</div>
+        <div class="row"><span class="avatar">АЗ</span><div class="who"><div class="name">Алексей Зайцев</div><div class="meta">Фотограф</div></div></div>
+        <div class="row"><span class="avatar">АС</span><div class="who"><div class="name">Анна Смирнова</div><div class="meta">Дизайнер интерфейсов</div></div></div>
+      </div>
+    </div>
+    <ul class="callouts">
+      <li>Блок стоит под «Пора связаться» и над списком. Фон серый, без градиента; число у заголовка не красное: день рождения — не просрочка.</li>
+      <li>Нажатие на строку открывает карточку. Кнопок в строке нет.</li>
+      <li>«исполнится N лет» — только если известен год. Длинное имя обрезается многоточием, «через N дней» видно целиком.</li>
+      <li>Выбрана группа — в блоке только её люди. Идёт поиск — блока нет. Поздравлять некого — блока нет совсем.</li>
+      <li>Больше пяти — видно пятерых и «Показать всех (N)», после раскрытия кнопка «Свернуть».</li>
+    </ul>
+  </div>
+
+  <div>
+    <p class="screen-title">Карточка контакта</p>
+    <div class="device">
+      <div class="muted small" style="margin-bottom:10px">← Все контакты</div>
+      <div class="hero-card">
+        <div class="top"><span class="big-avatar">АС</span><div class="btns"><span class="btn outline">Изменить</span><span class="btn outline">Удалить</span></div></div>
+        <div><div class="nm">Анна Смирнова</div><div class="ab">Дизайнер интерфейсов</div></div>
+        <div class="dl">
+          <div class="di"><span class="dk">Откуда знакомы</span><span>Учились вместе в университете</span></div>
+          <div class="di"><span class="dk">Телефон</span><span>+7 900 123-45-67</span></div>
+          <div class="di"><span class="dk">Почта</span><span>anna@example.com</span></div>
+          <div class="is-new"><span class="new-tag">новое</span>
+            <div class="di"><span class="dk">Дата рождения</span><span>15 марта 1990, 36 лет</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="muted small" style="margin:14px 2px 0">Ниже, как раньше: «Группы», «Как часто общаться», «Заметки».</p>
+    </div>
+    <div class="states">
+      <div class="state"><span class="when-l">Год не указан</span><span>15 марта</span></div>
+      <div class="state"><span class="when-l">Даты нет</span><span class="subtle">не указано</span></div>
+      <div class="state"><span class="when-l">Младше года</span><span>1 марта 2026, меньше года</span></div>
+    </div>
+    <ul class="callouts">
+      <li>Возраст — сколько полных лет сегодня по московскому календарю. Склонение: «21 год», «32 года», «35 лет».</li>
+      <li>В карточке дату не меняют: только через «Изменить».</li>
+    </ul>
+  </div>
+
+  <div>
+    <p class="screen-title">Форма «Добавить контакт» и «Изменить контакт»</p>
+    <div class="device">
+      <div class="form">
+        <div class="field"><span class="field-label">Имя</span><div class="input filled">Анна Смирнова</div></div>
+        <div class="field"><span class="field-label">Кто это</span><div class="input filled">Дизайнер интерфейсов</div></div>
+        <div class="field"><span class="field-label">Откуда знакомы</span><div class="input filled">Учились вместе в университете</div></div>
+        <div class="two-in">
+          <div class="field"><span class="field-label">Телефон</span><div class="input filled">+7 900 123-45-67</div></div>
+          <div class="field"><span class="field-label">Почта</span><div class="input filled">anna@example.com</div></div>
+        </div>
+        <div class="is-new"><span class="new-tag">новое</span>
+          <div class="field">
+            <span class="field-label">Дата рождения</span>
+            <div class="date-row"><div class="input filled sel">15</div><div class="input filled sel">марта</div><div class="input filled">1990</div></div>
+            <span class="hint">Год можно не указывать</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:6px"><span class="btn primary">Сохранить</span><span class="btn">Отмена</span></div>
+      </div>
+    </div>
+    <div class="states">
+      <div class="state">
+        <span class="when-l">Несуществующая дата</span>
+        <div class="date-row"><div class="input filled sel bad">31</div><div class="input filled sel bad">апреля</div><div class="input bad">Год</div></div>
+        <span class="err">Такой даты нет</span>
+      </div>
+      <div class="state">
+        <span class="when-l">Только день, без месяца</span>
+        <div class="date-row"><div class="input filled sel bad">15</div><div class="input sel bad">—</div><div class="input bad">Год</div></div>
+        <span class="err">Укажите день и месяц</span>
+      </div>
+      <div class="state">
+        <span class="when-l">Год 1899 или 2027</span>
+        <div class="date-row"><div class="input filled sel bad">15</div><div class="input filled sel bad">марта</div><div class="input filled bad">1899</div></div>
+        <span class="err">Укажите год от 1900 до 2026</span>
+      </div>
+      <div class="state">
+        <span class="when-l">Завтрашняя дата этого года</span>
+        <div class="date-row"><div class="input filled sel bad">16</div><div class="input filled sel bad">ноября</div><div class="input filled bad">2026</div></div>
+        <span class="err">Эта дата ещё не наступила</span>
+      </div>
+    </div>
+    <ul class="callouts">
+      <li>Поле стоит под «Телефон» и «Почта». День: пусто или 1–31, месяц: пусто или «января»…«декабря». На телефоне списки открывают системный выбор.</li>
+      <li>Убрать дату — выбрать пустые день и месяц и стереть год.</li>
+      <li>При ошибке контакт не сохраняется, всё введённое остаётся в форме. Сервер проверяет дату сам, даже если запрос пришёл не из формы.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- 3 -->
+<h2><span class="num">3</span>Как это работает</h2>
+<div class="rules">
+  <div class="rule">
+    <div class="h">Что хранится</div>
+    <p>День и месяц — обязательно вместе. Год — по желанию, от 1900 до текущего. Дата должна существовать и не быть в будущем.</p>
+    <div class="example">«15 марта» — можно. «15 марта 1990» — можно. «29 февраля» без года — можно. «29 февраля 2001» — нельзя: 2001 не високосный.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Кто попадает в блок: сегодня и следующие 7 дней</div>
+    <p>Дни считаются по московскому календарю. Год рождения на попадание не влияет.</p>
+    <div class="tablewrap">
+      <table class="data">
+        <tr><th>День рождения</th><th>В блоке?</th><th>Справа в строке</th></tr>
+        <tr><td>14 ноября</td><td class="no">нет — уже прошёл</td><td class="no">—</td></tr>
+        <tr><td>15 ноября</td><td class="new">да</td><td>сегодня</td></tr>
+        <tr><td>16 ноября</td><td class="new">да</td><td>завтра</td></tr>
+        <tr><td>18 ноября</td><td class="new">да</td><td>через 3 дня</td></tr>
+        <tr><td>22 ноября</td><td class="new">да</td><td>через 7 дней</td></tr>
+        <tr><td>23 ноября</td><td class="no">нет — дальше недели</td><td class="no">—</td></tr>
+      </table>
+    </div>
+    <div class="example">Сегодня 15 ноября → в блоке дни рождения с 15 по 22 ноября включительно.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Порядок: ближайшие сверху, в один день — по имени</div>
+    <div class="example">Анна — 20 ноября, Борис — 16, Вера — 15 → порядок: Вера, Борис, Анна.<br>У Бориса и Анны обоих 18 ноября → сначала Анна, потом Борис.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Неделя переходит через Новый год</div>
+    <div class="example">Сегодня 28 декабря. Анна — 3 января: в блоке, «через 6 дней». Борис — 5 января: нет, это через 8 дней.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">29 февраля в невисокосный год — 28 февраля</div>
+    <p>В строке остаётся дата «29 февраля», а «через N дней» считается до 28-го.</p>
+    <div class="example">25 февраля 2027 → «через 3 дня». 25 февраля 2028 (високосный) → «через 4 дня». 1 марта 2027 → в блоке уже нет.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Возраст: в карточке — сколько есть, в блоке — сколько исполнится</div>
+    <ul class="points">
+      <li>Карточка: полных лет на сегодня. Младше года — «меньше года».</li>
+      <li>Блок: «исполнится N лет» = год праздника минус год рождения. Без года — ничего.</li>
+    </ul>
+    <div class="example">Родился 16 ноября 1990, сегодня 15 ноября 2026 → в карточке «35 лет», в блоке «завтра · исполнится 36 лет». Назавтра в карточке «36 лет».</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Сутки — московские</div>
+    <p>Где бы ни работал сервер, «сегодня» — это день в Москве.</p>
+    <div class="example">В Москве 16 ноября 00:30, по всемирному времени ещё 15-е → у именинника 16 ноября уже «сегодня».</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Ведёт себя как «Пора связаться»</div>
+    <ul class="points">
+      <li>Выбрана группа в фильтре — только её люди; число, порядок и «Показать всех (N)» считаются по ним.</li>
+      <li>Пока в поиске есть запрос — блока нет. Очистили — вернулся.</li>
+      <li>Поздравлять некого — блока нет.</li>
+      <li>Сразу видно не больше 5, остальные — по «Показать всех (N)», обратно — «Свернуть». Сменили группу — блок снова свёрнут.</li>
+    </ul>
+    <div class="example">Скоро день рождения у Анны и Веры из «Семьи» и у Бориса из «Дачи». Выбрана «Семья» → в блоке Анна и Вера, у заголовка 2.</div>
+  </div>
+
+  <div class="rule">
+    <div class="h">Только свои</div>
+    <p>Каждый видит в блоке только свои контакты. Дату рождения чужого контакта нельзя ни увидеть, ни изменить: сервер отвечает «Контакт не найден».</p>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2><span class="num">4</span>Модель данных до и после</h2>
+<p>Модель данных — какие таблицы лежат в базе и какие в них поля. Фича добавляет три поля в таблицу контактов. Новых таблиц и связей нет.</p>
+
+<h3>Сейчас</h3>
+<p class="scroll-hint">Схему можно листать вбок.</p>
+<div class="schema">
+  <svg viewBox="0 0 880 440" role="img" aria-label="Схема сейчас: users, contacts, notes, groups, contact_groups">
+    <defs>
+      <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-arrow"/></marker>
+    </defs>
+    <path class="s-link" d="M590 80 H344" marker-end="url(#a1)"/>
+    <text class="s-note" x="465" y="72" text-anchor="middle">владелец</text>
+    <path class="s-link" d="M715 130 V166" marker-end="url(#a1)"/>
+    <text class="s-note" x="727" y="152">владелец</text>
+    <path class="s-link" d="M190 226 V286" marker-end="url(#a1)"/>
+    <text class="s-note" x="202" y="262">у контакта много заметок</text>
+    <path class="s-link" d="M340 200 H480 V286" marker-end="url(#a1)"/>
+    <path class="s-link" d="M715 270 V340 H584" marker-end="url(#a1)"/>
+    <text class="s-note" x="480" y="412" text-anchor="middle">кто в какой группе</text>
+
+    <rect class="s-box" x="590" y="30" width="250" height="100" rx="12"/>
+    <path class="s-head" d="M602 30 H828 A12 12 0 0 1 840 42 V66 H590 V42 A12 12 0 0 1 602 30 Z"/>
+    <text class="s-name" x="606" y="53">users</text>
+    <text class="s-ru" x="824" y="53" text-anchor="end">пользователи</text>
+    <text class="s-row" x="606" y="90">id</text>
+    <text class="s-row" x="606" y="114">email</text>
+
+    <rect class="s-box" x="40" y="30" width="300" height="196" rx="12"/>
+    <path class="s-head" d="M52 30 H328 A12 12 0 0 1 340 42 V66 H40 V42 A12 12 0 0 1 52 30 Z"/>
+    <text class="s-name" x="56" y="53">contacts</text>
+    <text class="s-ru" x="324" y="53" text-anchor="end">контакты</text>
+    <text class="s-row" x="56" y="90">id</text>
+    <text class="s-row" x="56" y="114">user_id <tspan class="ru">— чей контакт</tspan></text>
+    <text class="s-row" x="56" y="138">name, about, how_we_met</text>
+    <text class="s-row" x="56" y="162">phone, email</text>
+    <text class="s-row" x="56" y="186">touch_interval, … <tspan class="ru">— частота</tspan></text>
+    <text class="s-row" x="56" y="210">created_at, updated_at</text>
+
+    <rect class="s-box" x="590" y="170" width="250" height="100" rx="12"/>
+    <path class="s-head" d="M602 170 H828 A12 12 0 0 1 840 182 V206 H590 V182 A12 12 0 0 1 602 170 Z"/>
+    <text class="s-name" x="606" y="193">groups</text>
+    <text class="s-ru" x="824" y="193" text-anchor="end">группы</text>
+    <text class="s-row" x="606" y="230">id, user_id</text>
+    <text class="s-row" x="606" y="254">name</text>
+
+    <rect class="s-box" x="380" y="290" width="200" height="100" rx="12"/>
+    <path class="s-head" d="M392 290 H568 A12 12 0 0 1 580 302 V326 H380 V302 A12 12 0 0 1 392 290 Z"/>
+    <text class="s-name" x="396" y="313">contact_groups</text>
+    <text class="s-row" x="396" y="350">contact_id</text>
+    <text class="s-row" x="396" y="374">group_id</text>
+
+    <rect class="s-box" x="40" y="290" width="300" height="124" rx="12"/>
+    <path class="s-head" d="M52 290 H328 A12 12 0 0 1 340 302 V326 H40 V302 A12 12 0 0 1 52 290 Z"/>
+    <text class="s-name" x="56" y="313">notes</text>
+    <text class="s-ru" x="324" y="313" text-anchor="end">заметки</text>
+    <text class="s-row" x="56" y="350">id</text>
+    <text class="s-row" x="56" y="374">contact_id</text>
+    <text class="s-row" x="56" y="398">body, created_at</text>
+  </svg>
+</div>
+
+<h3>После</h3>
+<div class="legend">
+  <span><i class="sw new"></i>новое</span>
+  <span><i class="sw"></i>как было</span>
+</div>
+<p class="scroll-hint">Схему можно листать вбок.</p>
+<div class="schema">
+  <svg viewBox="0 0 880 510" role="img" aria-label="Схема после: у contacts три новых поля birth_day, birth_month, birth_year; остальные таблицы как были">
+    <defs>
+      <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-arrow"/></marker>
+    </defs>
+    <path class="s-link" d="M590 80 H344" marker-end="url(#a2)"/>
+    <text class="s-note" x="465" y="72" text-anchor="middle">владелец</text>
+    <path class="s-link" d="M715 130 V166" marker-end="url(#a2)"/>
+    <text class="s-note" x="727" y="152">владелец</text>
+    <path class="s-link" d="M190 298 V358" marker-end="url(#a2)"/>
+    <text class="s-note" x="202" y="334">у контакта много заметок</text>
+    <path class="s-link" d="M340 270 H480 V358" marker-end="url(#a2)"/>
+    <path class="s-link" d="M715 270 V412 H584" marker-end="url(#a2)"/>
+    <text class="s-note" x="480" y="484" text-anchor="middle">кто в какой группе</text>
+
+    <rect class="s-box" x="590" y="30" width="250" height="100" rx="12"/>
+    <path class="s-head" d="M602 30 H828 A12 12 0 0 1 840 42 V66 H590 V42 A12 12 0 0 1 602 30 Z"/>
+    <text class="s-name" x="606" y="53">users</text>
+    <text class="s-ru" x="824" y="53" text-anchor="end">как было</text>
+    <text class="s-row" x="606" y="90">id</text>
+    <text class="s-row" x="606" y="114">email</text>
+
+    <rect class="s-box" x="40" y="30" width="300" height="268" rx="12"/>
+    <path class="s-head" d="M52 30 H328 A12 12 0 0 1 340 42 V66 H40 V42 A12 12 0 0 1 52 30 Z"/>
+    <text class="s-name" x="56" y="53">contacts</text>
+    <text class="s-ru" x="324" y="53" text-anchor="end">контакты</text>
+    <text class="s-row" x="56" y="90">id</text>
+    <text class="s-row" x="56" y="114">user_id <tspan class="ru">— чей контакт</tspan></text>
+    <text class="s-row" x="56" y="138">name, about, how_we_met</text>
+    <text class="s-row" x="56" y="162">phone, email</text>
+    <rect class="s-hl" x="46" y="169" width="288" height="72" rx="6"/>
+    <text class="s-row new" x="56" y="186">birth_day <tspan class="ru">— день, 1–31, или пусто</tspan></text>
+    <text class="s-row new" x="56" y="210">birth_month <tspan class="ru">— месяц, 1–12, или пусто</tspan></text>
+    <text class="s-row new" x="56" y="234">birth_year <tspan class="ru">— год или пусто</tspan></text>
+    <text class="s-row" x="56" y="258">touch_interval, … <tspan class="ru">— частота</tspan></text>
+    <text class="s-row" x="56" y="282">created_at, updated_at</text>
+
+    <rect class="s-box" x="590" y="170" width="250" height="100" rx="12"/>
+    <path class="s-head" d="M602 170 H828 A12 12 0 0 1 840 182 V206 H590 V182 A12 12 0 0 1 602 170 Z"/>
+    <text class="s-name" x="606" y="193">groups</text>
+    <text class="s-ru" x="824" y="193" text-anchor="end">как было</text>
+    <text class="s-row" x="606" y="230">id, user_id</text>
+    <text class="s-row" x="606" y="254">name</text>
+
+    <rect class="s-box" x="380" y="362" width="200" height="100" rx="12"/>
+    <path class="s-head" d="M392 362 H568 A12 12 0 0 1 580 374 V398 H380 V374 A12 12 0 0 1 392 362 Z"/>
+    <text class="s-name" x="396" y="385">contact_groups</text>
+    <text class="s-row" x="396" y="422">contact_id</text>
+    <text class="s-row" x="396" y="446">group_id</text>
+
+    <rect class="s-box" x="40" y="362" width="300" height="124" rx="12"/>
+    <path class="s-head" d="M52 362 H328 A12 12 0 0 1 340 374 V398 H40 V374 A12 12 0 0 1 52 362 Z"/>
+    <text class="s-name" x="56" y="385">notes</text>
+    <text class="s-ru" x="324" y="385" text-anchor="end">как было</text>
+    <text class="s-row" x="56" y="422">id</text>
+    <text class="s-row" x="56" y="446">contact_id</text>
+    <text class="s-row" x="56" y="470">body, created_at</text>
+  </svg>
+</div>
+
+<ul class="points">
+  <li><b>Три отдельных поля</b>, а не одна дата: так можно хранить день и месяц без года и не выдумывать год-заглушку.</li>
+  <li>Ближайший день рождения и возраст нигде не хранятся: их каждый раз считает приложение по этим трём полям и сегодняшнему дню.</li>
+</ul>
+
+<h3>Правила, которые держит сама база</h3>
+<p class="muted small">Даже если ошибётся код, база не примет неправильную дату.</p>
+<div class="cards">
+  <div class="mini"><span class="k">День и месяц — вместе</span><p>Либо оба заполнены, либо оба пустые.</p></div>
+  <div class="mini"><span class="k">Год — только с датой</span><p>Год без дня и месяца не сохранится.</p></div>
+  <div class="mini"><span class="k">Дата существует</span><p>Нет 31 апреля и 30 февраля. 29 февраля — без года или в високосный год. Год не раньше 1900.</p></div>
+</div>
+<p class="muted small">«Год не позже текущего» и «дата не в будущем» проверяет сервер приложения: база так проверять не умеет.</p>
+
+<h3>Как блок находит только ваших людей</h3>
+<p>К выборке всегда добавляется «и владелец — тот, кто вошёл». Пример: у Анны — контакта пользователя A — день рождения завтра.</p>
+<div class="lookup">
+  <div class="who-card">
+    <h3>Вошёл A</h3>
+    <div class="ask">контакты с датой рождения <b>у a@test.ru</b></div>
+    <span class="result in">Анна, «завтра» — блок есть</span>
+  </div>
+  <div class="who-card">
+    <h3>Вошёл B</h3>
+    <div class="ask">контакты с датой рождения <b>у b@test.ru</b></div>
+    <span class="result out">Никого — блока нет</span>
+  </div>
+</div>
+
+<h3>Миграция</h3>
+<p class="muted small">Миграция — скрипт, который меняет устройство базы. Выкатка запускает его отдельным шагом до старта новой версии.</p>
+<ol class="steps">
+  <li>
+    <div>
+      <h3><code>drizzle/0004_….sql</code>: три пустых поля и правила для них <span class="tag">данные не меняет</span></h3>
+      <p>Добавляет <code>birth_day</code>, <code>birth_month</code>, <code>birth_year</code> к контактам и три проверки из карточек выше. Ни одна существующая строка не меняется.</p>
+    </div>
+  </li>
+</ol>
+
+<div class="tablewrap">
+  <table class="data">
+    <tr><th>Что в базе</th><th>До выкатки</th><th>После выкатки</th></tr>
+    <tr><td>Контакты</td><td>все ваши</td><td>те же, поля прежние; <span style="color:var(--destructive)">дата рождения пустая у всех</span></td></tr>
+    <tr><td>Заметки, частота, группы</td><td>как есть</td><td>не трогались</td></tr>
+  </table>
+</div>
+<p class="muted small">Поэтому сразу после выкатки блока «Скоро день рождения» на главной нет: он появится, когда вы впишете даты.</p>
+
+<div class="callout">
+  <h3>Как откатиться</h3>
+  <p>Прошлая версия приложения новых полей просто не видит и работает как раньше. Базу откатывать не нужно: откат — обычный запуск «Deploy prod» с галочкой «откат».</p>
+  <p>Даты, которые вы уже вписали, при этом не пропадут: старая версия эти поля не трогает, даже когда сохраняет контакт. Вернёте новую версию — даты на месте.</p>
+</div>
+
+<!-- 5 -->
+<h2><span class="num">5</span>Как проверить руками</h2>
+<div class="prep">
+  <b>Подготовка.</b> Запустите приложение локально (<code>pnpm dev</code>, см. README) или откройте тест-стенд после выкатки.
+  <ul>
+    <li>Удобнее завести несколько своих тестовых контактов и ставить им даты относительно сегодняшнего дня: «сегодня», «через 3 дня», «через 8 дней».</li>
+    <li>В демо-данных (<code>pnpm db:seed</code>) даты рождения будут примерно у половины контактов. Команда заполняет только пустую базу.</li>
+    <li>Пометка <b>«только автотест»</b> — сценарий с конкретной датой (29 февраля, Новый год, полночь) или запросом не из интерфейса: руками без смены даты на компьютере не проверить.</li>
+    <li>Галочки на этой странице только для удобства и не сохраняются.</li>
+  </ul>
+</div>
+
+<div class="check-group">
+  <h3>Поле «Дата рождения» в формах</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Добавил контакт с полной датой<span class="auto">автотест</span></div><div class="st">«Добавить контакт» → имя, день 15, месяц «марта», год 1990 → сохранить <span class="arrow">→</span> в карточке «Дата рождения: 15 марта 1990, 36 лет».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Дата без года<span class="auto">автотест</span></div><div class="st">День 15, месяц «марта», год пустой → сохранить <span class="arrow">→</span> в карточке «15 марта».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Контакт без даты<span class="auto">автотест</span></div><div class="st">Добавить контакт, поле даты не трогать <span class="arrow">→</span> сохранился, в карточке «Дата рождения: не указано».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Форма изменения показывает дату<span class="auto">автотест</span></div><div class="st">У контакта с 15 марта 1990 нажать «Изменить» <span class="arrow">→</span> выбраны 15 и «марта», в году 1990.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Изменил дату<span class="auto">автотест</span></div><div class="st">«Изменить» → поставить 16 марта → сохранить <span class="arrow">→</span> в карточке «16 марта», после перезагрузки и в другом браузере тоже.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Убрал дату<span class="auto">автотест</span></div><div class="st">«Изменить» → пустые день и месяц, стереть год → сохранить <span class="arrow">→</span> «не указано», в блоке «Скоро день рождения» его нет.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Старые контакты после обновления<span class="auto">автотест</span></div><div class="st">Открыть любой контакт, заведённый до фичи <span class="arrow">→</span> «Дата рождения: не указано», остальные поля, заметки, частота и группы на месте.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Проверка даты</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">День без месяца<span class="auto">автотест</span></div><div class="st">Выбрать только день (или только месяц) → сохранить <span class="arrow">→</span> под полем «Укажите день и месяц», контакт не сохранён.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Год без дня и месяца<span class="auto">автотест</span></div><div class="st">Ввести только год 1990 → сохранить <span class="arrow">→</span> «Укажите день и месяц».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Несуществующая дата<span class="auto">автотест</span></div><div class="st">31 апреля или 30 февраля → сохранить <span class="arrow">→</span> «Такой даты нет».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">29 февраля<span class="auto">автотест</span></div><div class="st">29 февраля без года, потом 29 февраля 2000 <span class="arrow">→</span> оба раза сохраняется.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">29 февраля невисокосного года<span class="auto">автотест</span></div><div class="st">29 февраля 2001 → сохранить <span class="arrow">→</span> «Такой даты нет».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Год вне диапазона<span class="auto">автотест</span></div><div class="st">По очереди 1899, 2027, «90», «19a0» <span class="arrow">→</span> каждый раз «Укажите год от 1900 до 2026».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Дата ещё не наступила<span class="auto">автотест</span></div><div class="st">Завтрашние день и месяц и текущий год → сохранить <span class="arrow">→</span> «Эта дата ещё не наступила».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Ошибка не стирает введённое<span class="auto">автотест</span></div><div class="st">Заполнить имя, телефон, выбрать 31 апреля → сохранить <span class="arrow">→</span> ошибка, а имя, телефон, 31 и «апреля» остались в форме.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Неверная дата прямым запросом к серверу<span class="auto only">только автотест</span></div><div class="st">Запрос на сохранение с днём 32 или месяцем 13, не из формы <span class="arrow">→</span> «Такой даты нет», контакт не изменился.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Дата рождения в карточке</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Возраст до и в день рождения<span class="auto">автотест</span></div><div class="st">Два контакта с годом 1990: день рождения завтра и сегодня <span class="arrow">→</span> у первого на год меньше, у второго уже полный возраст (сейчас «35 лет» и «36 лет»).</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Склонение лет<span class="auto">автотест</span></div><div class="st">Подобрать годы, чтобы было 21, 32 и 35 полных лет <span class="arrow">→</span> «21 год», «32 года», «35 лет».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Меньше года<span class="auto">автотест</span></div><div class="st">1 марта 2026 <span class="arrow">→</span> «1 марта 2026, меньше года».</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Блок «Скоро день рождения»</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Сегодня и через неделю<span class="auto">автотест</span></div><div class="st">Даты: сегодня, через 7 дней, через 8 дней, вчера <span class="arrow">→</span> в блоке первые два, у заголовка 2.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Ближайшие сверху<span class="auto">автотест</span></div><div class="st">Даты через 5 дней, через 1 день, сегодня <span class="arrow">→</span> порядок: сегодня, через день, через 5.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">В один день — по имени<span class="auto">автотест</span></div><div class="st">Борису и Анне одну дату через 3 дня <span class="arrow">→</span> сначала Анна.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Через Новый год<span class="auto only">только автотест</span></div><div class="st">Сегодня 28 декабря: 3 января в блоке, 5 января нет.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Без года и с годом<span class="auto">автотест</span></div><div class="st">Двоим одна дата через 3 дня, одному с годом, другому без <span class="arrow">→</span> в блоке оба.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Полночь по Москве<span class="auto only">только автотест</span></div><div class="st">В Москве 00:30 нового дня, по всемирному времени ещё вчера <span class="arrow">→</span> именинник нового дня уже «сегодня».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Вместе с «Пора связаться»<span class="auto">автотест</span></div><div class="st">Когда есть оба блока <span class="arrow">→</span> сверху «Пора связаться», под ним «Скоро день рождения», ниже список.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Открыл карточку из блока<span class="auto">автотест</span></div><div class="st">Нажать на строку <span class="arrow">→</span> открылась карточка этого человека.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Удалённый контакт<span class="auto">автотест</span></div><div class="st">Удалить контакт из блока <span class="arrow">→</span> на главной его больше нет в блоке.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Строка в блоке</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Когда<span class="auto">автотест</span></div><div class="st">Даты сегодня, завтра, через 3 и через 5 дней <span class="arrow">→</span> справа «сегодня», «завтра», «через 3 дня», «через 5 дней».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Сколько исполнится<span class="auto">автотест</span></div><div class="st">Через 3 дня, год 1990 <span class="arrow">→</span> в строке дата, «через 3 дня» и «исполнится 36 лет».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Год не указан<span class="auto">автотест</span></div><div class="st">Через 3 дня без года <span class="arrow">→</span> дата и «через 3 дня», без «исполнится».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Длинное имя<span class="auto">автотест</span></div><div class="st">Контакт «Екатерина Александровна Морозова-Константинопольская», телефон или узкое окно <span class="arrow">→</span> имя в одну строку с многоточием, «через N дней» целиком.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>29 февраля в блоке</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Невисокосный год<span class="auto only">только автотест</span></div><div class="st">25 февраля 2027 → в блоке, «29 февраля», «через 3 дня».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Високосный год<span class="auto only">только автотест</span></div><div class="st">25 февраля 2028 → «через 4 дня».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">1 марта невисокосного года<span class="auto only">только автотест</span></div><div class="st">1 марта 2027 → в блоке нет.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Первые пятеро</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Именинников больше пяти<span class="auto">автотест</span></div><div class="st">8 контактов с датами в ближайшую неделю <span class="arrow">→</span> видно 5 ближайших и «Показать всех (8)».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Раскрыл и свернул<span class="auto">автотест</span></div><div class="st">«Показать всех (8)» <span class="arrow">→</span> все 8 и «Свернуть» → нажать <span class="arrow">→</span> снова 5.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Именинников не больше пяти<span class="auto">автотест</span></div><div class="st">Оставить троих <span class="arrow">→</span> видно 3, кнопки «Показать всех» нет.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Когда блок не нужен</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Поиск по имени<span class="auto">автотест</span></div><div class="st">Ввести запрос в поиск <span class="arrow">→</span> блока нет. Очистить <span class="arrow">→</span> блок вернулся.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Поздравлять некого<span class="auto">автотест</span></div><div class="st">Убрать даты у всех, кто был в блоке <span class="arrow">→</span> блока нет.</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Блок и группа в фильтре</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">Только выбранная группа<span class="auto">автотест</span></div><div class="st">Скоро день рождения у двоих из «Семьи» и одного из «Дачи» → выбрать «Семья» <span class="arrow">→</span> в блоке двое, у заголовка 2.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">В группе поздравлять некого<span class="auto">автотест</span></div><div class="st">Выбрать группу, где ни у кого нет даты в ближайшую неделю <span class="arrow">→</span> блока нет.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Вернулся ко всем<span class="auto">автотест</span></div><div class="st">Нажать «Все» <span class="arrow">→</span> в блоке все именинники недели, из любых групп и без групп.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Больше пяти в группе<span class="auto">автотест</span></div><div class="st">6 именинников в «Семье» и 3 вне её → выбрать «Семья» <span class="arrow">→</span> 5 строк и «Показать всех (6)».</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Поиск при выбранной группе<span class="auto">автотест</span></div><div class="st">Выбрана «Семья» → ввести запрос <span class="arrow">→</span> блока нет. Очистить <span class="arrow">→</span> блок только с «Семьёй».</div></div></label>
+</div>
+
+<div class="check-group">
+  <h3>Только свои</h3>
+  <label class="check"><input type="checkbox"><div><div class="sc">День рождения у контакта A<span class="auto">автотест</span></div><div class="st">У вашего контакта день рождения завтра → в другом браузере войти другой почтой <span class="arrow">→</span> там блока «Скоро день рождения» нет.</div></div></label>
+  <label class="check"><input type="checkbox"><div><div class="sc">Дата рождения чужого контакта<span class="auto only">только автотест</span></div><div class="st">Второй пользователь отправляет изменение вашего контакта с новой датой <span class="arrow">→</span> «Контакт не найден», ваша дата прежняя.</div></div></label>
+</div>
+
+<!-- 6 -->
+<h2><span class="num">6</span>Что агент решил сам</h2>
+<p class="muted small">Согласовано с вами: год необязателен и при нём показываем возраст; окно «сегодня + 7 дней»; блок ведёт себя как «Пора связаться»; блок стоит под ним. Остальное ниже — решения агента.</p>
+<div class="two">
+  <div class="card box">
+    <h3>Продуктовые — стоит просмотреть</h3>
+    <ul class="points small">
+      <li>Ввод: день и месяц — списки, год — цифрами. Подсказка «Год можно не указывать».</li>
+      <li>Поле стоит под «Телефон» и «Почта», в карточке строка — после «Почта».</li>
+      <li>Дату меняют только через «Изменить», не в карточке одним нажатием.</li>
+      <li>Тексты ошибок: «Укажите день и месяц», «Такой даты нет», «Укажите год от 1900 до 2026», «Эта дата ещё не наступила».</li>
+      <li>Годы — от 1900 до текущего, дата не может быть в будущем.</li>
+      <li>29 февраля в невисокосный год — в блоке 28 февраля, а в строке остаётся «29 февраля».</li>
+      <li>Карточка: «15 марта 1990, 36 лет»; младше года — «меньше года».</li>
+      <li>Блок: «исполнится N лет» (и в сам день рождения тоже «исполнится»). Если человек родился сегодня — без «исполнится».</li>
+      <li>В строке блока нет кнопок, только переход в карточку.</li>
+      <li>Вид блока: серый фон без градиента, число не красное, значок торта у заголовка.</li>
+      <li>В демо-данных дата у половины контактов, у трети из них без года.</li>
+    </ul>
+  </div>
+  <div class="card box">
+    <h3>Технические — на экраны не влияют</h3>
+    <ul class="points small">
+      <li>Три поля вместо одной даты: нет выдуманного года для дат без года.</li>
+      <li>Правильность даты проверяют и сервер, и сама база.</li>
+      <li>Ближайший день рождения, 29 февраля, Новый год и возраст считаются в одном месте в коде приложения, а не в базе: так их проще проверить автотестами с любым «сегодня».</li>
+      <li>«Сегодня» берётся из часов сервера приложения по Москве, а не из часов базы, как у «Пора связаться»: здесь сравнивать с моментами из базы не нужно.</li>
+      <li>Сервер берёт из базы все ваши контакты с датой, а ближайшую неделю отбирает приложение: на сотнях контактов это быстро.</li>
+      <li>«Первые 5 и Показать всех» выносится в общий кусок, его используют оба блока. Старые автотесты «Пора связаться» должны остаться зелёными без правок.</li>
+      <li>Списки дня и месяца — готовый компонент shadcn/ui (библиотеки готовых элементов интерфейса); новых библиотек нет.</li>
+      <li>Автотесты в браузере не могут подменить дату на сервере, поэтому 29 февраля, Новый год и полночь проверяют быстрые автотесты кода.</li>
+      <li>В базе автотестов браузера у 30 демо-контактов дат нет, чтобы блок не мешал другим тестам.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 7 -->
+<h2><span class="num">7</span>Что осталось неясным</h2>
+<div class="card">
+  <p><b>Открытых вопросов нет.</b></p>
+  <p class="small muted">Стоит просмотреть продуктовые решения из раздела 6: они записаны в требованиях, и реализация пойдёт по ним.</p>
+</div>
+
+<footer>Собрано по <code>openspec/changes/birthdays/</code>: proposal.md, specs/, design.md, tasks.md. Кода по фиче ещё нет. Страница только показывает, ничего не меняет.</footer>
+</div>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import type { BirthDate } from "@/lib/birthdays";
 import { APP_TIME_ZONE } from "@/lib/time-zone";
 
 const pluralRules = new Intl.PluralRules("ru-RU");
@@ -25,6 +26,53 @@ export function notesCount(count: number): string {
 
 export function daysCount(count: number): string {
   return pluralize(count, { one: "день", few: "дня", many: "дней" });
+}
+
+export function yearsCount(count: number): string {
+  return pluralize(count, { one: "год", few: "года", many: "лет" });
+}
+
+// Months as they go after a day: "15 марта". A list, not Intl: the same names
+// label the month picker of the contact form
+export const monthNamesGenitive = [
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
+] as const;
+
+// "15 марта", or "15 марта 1990" when the year is known
+export function formatBirthDate(birth: BirthDate): string {
+  const dayAndMonth = `${birth.day} ${monthNamesGenitive[birth.month - 1]}`;
+  return birth.year === null ? dayAndMonth : `${dayAndMonth} ${birth.year}`;
+}
+
+// Full years in the card: "36 лет"; a baby is "меньше года"
+export function ageText(age: number): string {
+  return age === 0 ? "меньше года" : yearsCount(age);
+}
+
+// When the birthday comes: "сегодня", "завтра", "через 3 дня"
+export function birthdayWhenText(daysUntil: number): string {
+  if (daysUntil === 0) {
+    return "сегодня";
+  }
+  if (daysUntil === 1) {
+    return "завтра";
+  }
+  return `через ${daysCount(daysUntil)}`;
+}
+
+export function turningAgeText(age: number): string {
+  return `исполнится ${yearsCount(age)}`;
 }
 
 const dayMonthFormat = new Intl.DateTimeFormat("ru-RU", {

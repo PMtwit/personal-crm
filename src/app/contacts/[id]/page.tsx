@@ -19,7 +19,13 @@ import {
   listGroups,
   listNotes,
 } from "@/lib/data";
-import { formatDateTime, notesCount } from "@/lib/format";
+import { ageOn, todayInAppTimeZone } from "@/lib/birthdays";
+import {
+  ageText,
+  formatBirthDate,
+  formatDateTime,
+  notesCount,
+} from "@/lib/format";
 import { touchStatusLine } from "@/lib/keep-in-touch";
 import { requireUserId } from "@/lib/session";
 import { parseId } from "@/lib/validation";
@@ -119,6 +125,7 @@ async function ContactCard({
               </a>
             ) : null}
           </DetailRow>
+          <DetailRow label="Дата рождения">{birthDateLine(contact)}</DetailRow>
         </dl>
       </header>
 
@@ -179,6 +186,27 @@ async function ContactCard({
       </section>
     </article>
   );
+}
+
+// "15 марта", or with the year and the full years today by Moscow's calendar:
+// "15 марта 1990, 36 лет". null without a date: the row says "не указано"
+function birthDateLine(contact: {
+  birthDay: number | null;
+  birthMonth: number | null;
+  birthYear: number | null;
+}): string | null {
+  if (contact.birthDay === null || contact.birthMonth === null) {
+    return null;
+  }
+  const birth = {
+    day: contact.birthDay,
+    month: contact.birthMonth,
+    year: contact.birthYear,
+  };
+  const age = ageOn(birth, todayInAppTimeZone());
+  return age === null
+    ? formatBirthDate(birth)
+    : `${formatBirthDate(birth)}, ${ageText(age)}`;
 }
 
 function DetailRow({

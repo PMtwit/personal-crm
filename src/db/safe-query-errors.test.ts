@@ -36,6 +36,9 @@ const CONTACT = {
   email: "tainoe@example.test",
 };
 
+// The form's input for this contact: the texts above and no birth date
+const INPUT = { ...CONTACT, birthDay: null, birthMonth: null, birthYear: null };
+
 // Postgres refuses a text with this character, whatever the column
 const NUL = "\u0000";
 
@@ -68,7 +71,7 @@ function expectNoneOf(error: Error, values: string[]) {
 describe("A failed query keeps personal data out of the error", () => {
   it("adding a contact: name, phone, email, about and how we met", async () => {
     const error = await failureOf(() =>
-      insertContact(owner, { ...CONTACT, name: `${CONTACT.name}${NUL}` }),
+      insertContact(owner, { ...INPUT, name: `${CONTACT.name}${NUL}` }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
@@ -77,7 +80,7 @@ describe("A failed query keeps personal data out of the error", () => {
   it("Postgres quoting the whole row in its answer", async () => {
     // A not-null failure: the database answers "Failing row contains (...)"
     const error = await failureOf(() =>
-      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...INPUT, name: null as unknown as string }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
@@ -87,7 +90,7 @@ describe("A failed query keeps personal data out of the error", () => {
     const id = await createContact(owner, "Анна");
 
     const error = await failureOf(() =>
-      updateContact(owner, id, { ...CONTACT, phone: `${CONTACT.phone}${NUL}` }),
+      updateContact(owner, id, { ...INPUT, phone: `${CONTACT.phone}${NUL}` }),
     );
 
     expectNoneOf(error, Object.values(CONTACT));
@@ -154,7 +157,7 @@ describe("A failed query keeps personal data out of the error", () => {
 describe("A failed query still says what went wrong", () => {
   it("the query without its values, the error's code, the table and the column", async () => {
     const error = await failureOf(() =>
-      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...INPUT, name: null as unknown as string }),
     );
 
     expect(error.message).toContain('insert into "contacts"');
@@ -184,7 +187,7 @@ describe("A failed query still says what went wrong", () => {
 
   it("the stack shows which function of the app failed", async () => {
     const error = await failureOf(() =>
-      insertContact(owner, { ...CONTACT, name: null as unknown as string }),
+      insertContact(owner, { ...INPUT, name: null as unknown as string }),
     );
 
     expect(error.stack).toContain("insertContact");
