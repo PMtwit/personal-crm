@@ -4,11 +4,17 @@
 # environment's address, port and memory limits, deploy.sh sets APP_TAG, the
 # image tag (commit SHA) to run. Each environment's own .env lies next to this file.
 
+# Logs of every container go to the server's journal (journald), not to files
+# of the container: they stay after a deploy or a rollback replaces it. The
+# system limits the journal's size and drops its oldest lines, so the disk does
+# not fill up. The tag names a line after its container (prod-app-1), the same
+# in every version; the labels pick all lines of one environment or one
+# service, the one-off migration containers too. How to read them: README, "Логи"
 x-logging: &logging
-  driver: json-file
+  driver: journald
   options:
-    max-size: 10m
-    max-file: "3"
+    tag: "{{.Name}}"
+    labels: com.docker.compose.project,com.docker.compose.service
 
 x-app: &app
   image: ghcr.io/pmtwit/personal-crm:${APP_TAG:?run deploy.sh with the image tag}
