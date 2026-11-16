@@ -1,11 +1,11 @@
 import "server-only";
 
 import { and, eq, lt, sql } from "drizzle-orm";
-import { z } from "zod";
 
 import { db } from "@/db";
 import { signInEmails } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { z } from "@/lib/zod";
 
 // No more than 3 letters to one email within 10 minutes
 const LETTER_LIMIT = 3;

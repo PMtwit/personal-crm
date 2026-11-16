@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect, RedirectType } from "next/navigation";
-import { z } from "zod";
 
 import {
   createGroupForContact,
@@ -26,6 +25,7 @@ import {
   type ContactErrorKey,
   type ContactValues,
 } from "@/lib/validation";
+import { z } from "@/lib/zod";
 
 export type ContactFormState = {
   values?: ContactValues;
