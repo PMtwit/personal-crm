@@ -1,6 +1,5 @@
-import { z } from "zod";
-
 import { formatDueDate, overdueText } from "@/lib/format";
+import { z } from "@/lib/zod";
 
 // How often the owner wants to talk to a contact. "none" exists only in the form:
 // in the database the contact then has no interval (null)

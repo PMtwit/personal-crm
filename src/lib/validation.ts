@@ -1,10 +1,9 @@
-import { z } from "zod";
-
 import {
   isValidBirthDate,
   todayInAppTimeZone,
   type CalendarDay,
 } from "@/lib/birthdays";
+import { z } from "@/lib/zod";
 
 // Error messages are shown to the user, so they are in Russian
 
