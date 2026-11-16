@@ -312,9 +312,39 @@ sudo -u deploy bash -c 'umask 077 && nano /srv/personal-crm/.env'
 - https://app.pmcrm.site/health и https://test-app.pmcrm.site/health отвечают `{"status":"ok"}`
 - Какая версия запущена и в каком состоянии: `ssh crm docker ps`, в колонке IMAGE видно SHA коммита
 - Список версий прода, последняя строка — текущая: `ssh crm sudo -u deploy cat /srv/personal-crm/deploy-history`
-- Логи приложения: `ssh crm docker logs --tail 100 prod-app-1`, у тест-стенда — `staging-app-1`
+- Логи приложения: `ssh crm TZ=Europe/Moscow journalctl -t prod-app-1 -n 100`, у тест-стенда — `staging-app-1`. Подробнее — в разделе «Логи»
 - Сколько памяти занято и какой лимит: `ssh crm docker stats --no-stream`
 - Если на сайте страница «Не получилось загрузить данные», откройте `/health` этого сайта. Ответ `database unreachable` значит, что приложение не достаёт до базы: проверьте `ssh crm docker ps`, у `prod-db-1` (или `staging-db-1`) должен быть статус `(healthy)`
+
+### Логи
+
+Все контейнеры прода и тест-стенда пишут логи в журнал сервера. Выкатка и откат заменяют контейнер, а его прошлые строки остаются в журнале: видно, что было и до выкатки.
+
+Последние 100 строк приложения прода. У тест-стенда вместо `prod` пишите `staging`, так во всех командах ниже:
+
+```
+ssh crm TZ=Europe/Moscow journalctl -t prod-app-1 -n 100
+```
+
+Каждая строка начинается с даты и времени по Москве, имени сервера `kaza2` и контейнера. `TZ=Europe/Moscow` в начале команды нужен для московского времени, без него время будет по UTC, на 3 часа раньше.
+
+- Следить вживую, новые строки появляются сразу; выход — Ctrl+C:
+  `ssh -t crm TZ=Europe/Moscow journalctl -t prod-app-1 -f`
+- За промежуток времени, время московское:
+  `ssh crm 'TZ=Europe/Moscow journalctl -t prod-app-1 --since "2026-11-16 21:00" --until "2026-11-16 22:00"'`
+- Только база: `-t prod-db-1` вместо `-t prod-app-1`
+- Только миграции:
+  `ssh crm TZ=Europe/Moscow journalctl COM_DOCKER_COMPOSE_PROJECT=prod COM_DOCKER_COMPOSE_SERVICE=migrate -n 50`
+- Всё окружение сразу — приложение, база и миграции вперемешку, по времени. Удобно, когда разбираетесь с выкаткой:
+  `ssh crm TZ=Europe/Moscow journalctl COM_DOCKER_COMPOSE_PROJECT=prod -n 200`
+
+Сколько хранится:
+
+- Журнал один на весь сервер, его размер ограничивает система: около 10% диска, сейчас примерно 2,4 ГБ. Когда журнал дорастает до предела, самые старые строки удаляются сами. Сколько он занимает сейчас: `ssh crm journalctl --disk-usage`
+- Те же строки система копирует в `/var/log/syslog` и хранит там 4 недели
+- `docker logs prod-app-1` тоже работает, но показывает только текущий контейнер, с последней выкатки
+
+Чтобы читать журнал без sudo, пользователь `crmapp` состоит в группе `systemd-journal`. Это настроено один раз командой `sudo usermod -aG systemd-journal crmapp`, работает со следующего входа по ssh.
 
 ### Тест-стенд
 
